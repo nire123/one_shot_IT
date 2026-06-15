@@ -40,16 +40,16 @@ pip install -e ".[plots,test]"   # + matplotlib, pytest
 
 ```python
 import numpy as np
-from fbl import TypeBasedChannel
 from fbl.prioropt import AchievabilityQP
 
-W = np.array([[0.9, 0.1], [0.0, 1.0]])   # Z-channel
+W = np.array([[0.9, 0.1], [0.0, 1.0]])    # Z-channel
 n = 12
 
 # exact achievability-optimal prior (QP) at total rate R
 aqp = AchievabilityQP(W, n)
 res = aqp.solve_rcu_plus(R=n * 0.15)      # total rate = n * per-symbol rate
-print("optimal P_e:", res["P_e_exact"])
+print("optimal P_e:", res["P_e_exact"])   # -> ~7.6e-3
+print("optimal type prior:", res["Q_opt"])
 ```
 
 See [`examples/`](examples/) for the figure suite and [`RESULTS.md`](RESULTS.md)
