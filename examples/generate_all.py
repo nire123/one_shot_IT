@@ -3,27 +3,26 @@ Regenerate the entire example figure suite into examples/figures/.
 
     python examples/generate_all.py
 
-All settings are reduced (small n / few MC draws / coarse grids) so the whole
-suite runs in a couple of minutes on commodity hardware.
+One generator per use case (channel / rate-distortion average / rate-distortion
+excess / JSCC). All settings are reduced (small n / few MC draws / coarse grids)
+so the whole suite runs in a few minutes on commodity hardware.
 """
 import importlib
 import time
 
 MODULES = [
-    "ex1_mc_spread",
-    "ex2_prior_gap",
-    "ex3_bounds_vs_exact",
-    "ex4_fcurve_compare",
-    "ex5_jscc_gain",
+    "gen_channel",
+    "gen_rd_average",
+    "gen_rd_excess",
+    "gen_jscc",
 ]
 
 
 def main():
     for name in MODULES:
-        print(f"[{name}]")
+        print(f"==== {name} ====")
         t0 = time.time()
-        mod = importlib.import_module(name)
-        mod.main()
+        importlib.import_module(name).main()
         print(f"  ({time.time() - t0:.1f}s)")
     print("all figures written to examples/figures/")
 
