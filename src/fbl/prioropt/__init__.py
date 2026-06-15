@@ -21,10 +21,10 @@ from fbl.prioropt.achievability_qp import AchievabilityQP
 from fbl.prioropt.achievability_lp_rd import AchievabilityLP_RD
 from fbl.prioropt.achievability_jscc import AchievabilityJSCC
 from fbl.prioropt.excess_distortion_rd import ExcessRD
-from fbl.prioropt.typebased_block_lp import TypeBasedBlockLP
+from fbl.prioropt.typebased_block_lp import TypeBasedBlockLP, rcu_plus_from_F_curve
 from fbl.prioropt.typebased_block_lp_rd import TypeBasedBlockLPRD
 
 __all__ = [
     "AchievabilityQP", "AchievabilityLP_RD", "AchievabilityJSCC", "ExcessRD",
-    "TypeBasedBlockLP", "TypeBasedBlockLPRD",
+    "TypeBasedBlockLP", "TypeBasedBlockLPRD", "rcu_plus_from_F_curve",
 ]
