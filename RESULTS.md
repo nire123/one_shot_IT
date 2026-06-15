@@ -65,10 +65,19 @@ for the two optimal priors, at a fixed rate. The two bounds optimise the prior f
   because the achievability bound *integrates* the spectrum there (weighted by
   `e^{-Lz}`).
 
-*(Z(0.1), n=12, R=0.25 bits/use. The labelled bound values — `5.2e-6` converse,
-`1.0e-2` achievability — are different bound types: the converse is the
-single-point value at `z=R`, the achievability is the integral over `z>=R`, and
-their separation is the finite-`n` converse–achievability gap.)*
+Each prior carries **two** numbers (both shown in the legend): its single-threshold
+value `@R` and the integrated achievability bound. They cross:
+
+| prior | `@R` (single threshold) | achievability bound (∫ over `z>=R`) |
+|---|---|---|
+| converse-optimal | **5.2e-6** (min) | 8.5e-2 |
+| achievability-optimal | 4.8e-5 | **1.0e-2** (min) |
+
+The converse-optimal prior wins at the threshold but, **reused for achievability,
+gives an 8.5 % error bound — 8.5× worse** than the achievability-optimal prior's
+1.0 % — precisely because it ignores the `z > R` tail. That penalty is the
+practical reason to optimise the prior for the right objective. *(Z(0.1), n=12,
+R=0.25 bits/use.)*
 
 ---
 
