@@ -49,18 +49,26 @@ surrogates are loose at low rate and tighten as the rate grows. *(n=10.)*
 
 ---
 
-## F-curve comparison — converse-optimal vs achievability-optimal prior
+## Error spectrum — converse-optimal vs achievability-optimal prior
 
-![F-curve compare](examples/figures/ex4_fcurve_compare.png)
+![error-spectrum compare](examples/figures/ex4_fcurve_compare.png)
 
-The converse and achievability bounds optimise the prior for *different*
-objectives, so their optimal priors — and their error spectra — genuinely differ.
-The achievability-optimal prior concentrates spectral mass below the kernel
-threshold `w_0 = 1/M`; the converse-optimal prior (tuned for the single
-meta-converse threshold) has a more gradual spectrum. *(Z(0.1), n=12, R=0.25 bits;
-the two priors' bound values, `5.2e-6` converse vs `1.0e-2` achievability, are
-different bound types — a converse lower bound and an achievability upper bound —
-illustrating the finite-`n` converse–achievability gap.)*
+The error spectrum `Pr[PEP > w] = Pr[-log PEP <= z]` (log scale, vs `z = -log PEP`)
+for the two optimal priors, at a fixed rate. The two bounds optimise the prior for
+*different* objectives, and it shows:
+
+- the **converse-optimal prior** dips to its minimum **exactly at the threshold
+  `z = R`** (the meta-converse is a single-threshold objective) and then **blows up
+  across `z > R`** — it pays nothing for the tail;
+- the **achievability-optimal prior** sits a hair higher at `z = R` but stays
+  **orders of magnitude lower across the whole `z >= R` region** — precisely
+  because the achievability bound *integrates* the spectrum there (weighted by
+  `e^{-Lz}`).
+
+*(Z(0.1), n=12, R=0.25 bits/use. The labelled bound values — `5.2e-6` converse,
+`1.0e-2` achievability — are different bound types: the converse is the
+single-point value at `z=R`, the achievability is the integral over `z>=R`, and
+their separation is the finite-`n` converse–achievability gap.)*
 
 ---
 
