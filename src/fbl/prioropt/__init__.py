@@ -23,8 +23,10 @@ from fbl.prioropt.achievability_jscc import AchievabilityJSCC
 from fbl.prioropt.excess_distortion_rd import ExcessRD
 from fbl.prioropt.typebased_block_lp import TypeBasedBlockLP, rcu_plus_from_F_curve
 from fbl.prioropt.typebased_block_lp_rd import TypeBasedBlockLPRD
+from fbl.prioropt.direct_program import DirectPriorOpt
 
 __all__ = [
     "AchievabilityQP", "AchievabilityLP_RD", "AchievabilityJSCC", "ExcessRD",
     "TypeBasedBlockLP", "TypeBasedBlockLPRD", "rcu_plus_from_F_curve",
+    "DirectPriorOpt",
 ]

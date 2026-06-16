@@ -59,6 +59,39 @@ optimisation is global — and is an **exact convex program**:
 The converse is the achievability program with the **Dirac kernel** — used as a
 built-in self-check (`AchievabilityJSCC.solve_dirac_ramp` ≡ `compute_converse`).
 
+### 2.1 The unified `Φ`-view and the direct simplex program
+
+All of the above are one program, `minimize 1 − cᵀ Φ(A·Q)` over the simplex, where
+`A·Q` are the cumulative staircase masses, `c` the metric gaps, and the **kernel
+chooses `Φ`** (`Φ' = 1 − g`, `g = ∫κ`):
+
+| program | kernel | `Φ(t)` | shape |
+|---|---|---|---|
+| converse | Dirac `δ(w−w₀)` | `min(t, w₀)` (ramp) | piecewise-linear → **LP** |
+| RCU⁺ (L=1) | `e^R 1{w≤w₀}` | `t − ½e^R t²` clamped | piecewise-quadratic → **QP** |
+| list-L / RD | — | degree `L+1` / `1−(1−t)^M` | → LP / bracket |
+
+`DirectPriorOpt` solves this **directly on the simplex** by a first-order march
+(projected gradient / Frank–Wolfe) using the analytic water-fill gradient
+`g(x) = ∂Γ/∂Q(x)`; the directional derivative on the simplex is `⟨g − ḡ, μ⟩`
+(`Σμ = 0`), and optimality is the **water-filling** condition (`g(x)` equal on the
+support). It is exact for *any* kernel (no bracketing gap), cheap per-iteration
+(no cvxpy), and warm-startable across a rate sweep.
+
+**Solver choice (recommended).**
+
+| task | default | `DirectPriorOpt` |
+|---|---|---|
+| achievability, RCU⁺ | **exact QP** | alternative; scalable + warm-startable, first-order (slow to ~1e-9) |
+| achievability, general kernel (RD/JSCC list-L) | bracketing LP (`O(h²)`) | **exact** (true `Φ`, no bracket gap) |
+| converse | **meta-converse LP** (exact, one-shot) | unified view only; non-smooth (Dirac) → first-order crawls |
+
+The direct program is the *unifying* lens and the scalable/exact-for-any-kernel
+path; the QP/LP remain the robust exact solvers (interior-point handles the
+flat/degenerate optimum that stalls plain first-order methods). A
+support-identifying active-set finish (future work) would make the direct program
+competitive at machine precision.
+
 ## 3. Conventions (read before comparing curves)
 
 - **Rate / `M`.** Channel has a free rate knob `M = e^{nR}` (per-symbol
