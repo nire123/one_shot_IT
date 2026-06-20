@@ -62,6 +62,23 @@ def phi_rd_smooth(tau, M):
     return np.exp(-M * tau)
 
 
+# Potential derivatives Phi' (= int_sigma^1 kappa), for the simplex gradient.
+def dphi_channel_exact(sigma, M):
+    return np.maximum(1.0 - sigma, 0.0) ** (M - 1.0)
+
+
+def dphi_rcu_plus(sigma, M):
+    return np.where(sigma <= 1.0 / (M - 1.0), 1.0 - (M - 1.0) * sigma, 0.0)
+
+
+def dphi_rd_exact(tau, M):
+    return -M * np.maximum(1.0 - tau, 0.0) ** (M - 1.0)
+
+
+def dphi_rd_smooth(tau, M):
+    return -M * np.exp(-M * tau)
+
+
 CHANNEL_KERNELS = {                       # name -> (Phi, kappa)
     "exact":    (phi_channel_exact, kappa_channel_exact),
     "rcu_plus": (phi_rcu_plus,      kappa_rcu_plus),
@@ -70,6 +87,8 @@ RD_KERNELS = {                            # name -> Phi  (direct = operational)
     "exact":  phi_rd_exact,
     "smooth": phi_rd_smooth,
 }
+CHANNEL_DERIV = {"exact": dphi_channel_exact, "rcu_plus": dphi_rcu_plus}
+RD_DERIV = {"exact": dphi_rd_exact, "smooth": dphi_rd_smooth}
 
 
 # ----------------------------------------------------------------- preprocess
