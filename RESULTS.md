@@ -18,16 +18,16 @@ at `n=6` — it is a lifted block quantity).
 | Channel coding | Z(0.1), `n=8,20` | [results/channel.md](results/channel.md) | `examples/gen_channel.py` |
 | RD — average | BMS(0.25)+Hamming, `n=8,20` | [results/rd_average.md](results/rd_average.md) | `examples/gen_rd_average.py` |
 | RD — excess | BMS(0.25), `T=1`, `n=6` | [results/rd_excess.md](results/rd_excess.md) | `examples/gen_rd_excess.py` |
-| JSCC | (future work) | [results/jscc.md](results/jscc.md) | `examples/gen_jscc.py` |
+| JSCC | BMS(0.07)/BSC(0.05), `H<C` | [results/jscc.md](results/jscc.md) | `examples/gen_jscc.py` |
 
-Every bound is backed by the cross-check suite in [`tests/`](tests/) (**106 tests**:
+Every bound is backed by the cross-check suite in [`tests/`](tests/) (**107 tests**:
 engine cross-checks + Φ-view identity + simplex-march optimality/KKT). See
 [`docs/TESTING.md`](docs/TESTING.md) for what each check guarantees.
 
 ```bash
 pip install -e ".[plots,test]"
 python examples/generate_all.py     # -> examples/figures/*.png
-pytest -q                           # 106 tests
+pytest -q                           # 107 tests
 ```
 
 ## Headline across use cases

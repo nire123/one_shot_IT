@@ -12,9 +12,10 @@ pip install -e ".[plots,test]"
 pytest -q
 ```
 
-The suite is **68 tests**. It is **slow** (~25 min): the prior-opt and one-shot
-tests build cvxpy programs and lift to `|X|ⁿ` at `n` up to 6–8. For a fast inner
-loop, target a file or a setting:
+The suite is **107 tests**. It is **slow** (tens of minutes): the prior-opt and
+one-shot tests build cvxpy programs and lift to `|X|ⁿ` at `n` up to 6–8. For a fast
+inner loop, target a file or a setting (see also
+[`../tests/README.md`](../tests/README.md) for a per-file map):
 
 ```bash
 pytest tests/test_prioropt.py -q            # prior-opt invariants only
@@ -25,14 +26,16 @@ pytest -q -k "qp or bracket"                # by name
 All randomness is seeded (`np.random.default_rng(...)`, fixed Monte-Carlo seeds),
 so the suite is **not flaky**; there are no `skip`/`xfail` markers.
 
-## The four validation strategies
+## The validation strategies
 
 | # | cross-check | guarantees | where |
 |---|---|---|---|
 | 1 | **one-shot ↔ type-based** at small `n` | the method-of-types reconstruction equals the exact lifted computation (F/A-curves and the converse LP optimum) | `test_type_based_channel.py`, `test_type_based_rd.py`, `test_jscc_type_based.py` |
 | 2 | **RCU expectation ↔ Monte-Carlo** | the analytic achievable bound equals the mean realised error of drawn random codebooks (3σ sandwich) | `test_jscc_one_shot.py` |
 | 3 | **converse ≤ achievable** | the meta-converse never exceeds the achievable bound at any rate | `test_jscc_one_shot.py`, `test_jscc_type_based.py`, `test_prioropt.py` |
-| 4 | **prior-opt invariants** | the exact programs satisfy their structural guarantees (below) | `test_prioropt.py`, `test_direct_program.py` |
+| 4 | **prior-opt invariants** | the exact QP/bracket programs satisfy their structural guarantees | `test_prioropt.py` |
+| 5 | **Φ-view identity** | the relaxation `J = cᵀΦ(A·Q)` equals an independent computation (formula vs direct, type-based vs lifted) for channel/RD/JSCC | `test_phi_view.py` |
+| 6 | **march optimality** | the simplex march matches the exact solvers and satisfies the intrinsic **KKT** certificate (rejected off the optimum) | `test_phi_simplex.py` |
 
 ### Strategy 4 in detail (the contribution's checks)
 

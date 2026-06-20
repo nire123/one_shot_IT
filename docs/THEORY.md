@@ -100,7 +100,7 @@ class**:
 
 | program | kernel | `Φ(t)` | shape | solver in `fbl` |
 |---|---|---|---|---|
-| converse | Dirac `δ(w−w₀)` | `min(t, w₀)` (ramp) | piecewise-linear → **LP** | `optimize_prior`, `TypeBasedBlockLP` |
+| converse | Dirac `δ(w−w₀)` | `min(t, w₀)` (ramp) | piecewise-linear → **LP** | `optimize_prior` / `compute_converse` |
 | achievability, `L=1` | `eᴿ 1{w≤w₀}` | `t − ½eᴿt²` (clamped) | piecewise-quadratic → **QP** | `AchievabilityQP`, `AchievabilityJSCC` |
 | achievability, general | positive kernel | `1−(1−t)ᴹ` / degree `L+1` | concave, non-polynomial → **bracket** | `AchievabilityLP_RD`, `ExcessRD` |
 
@@ -124,27 +124,30 @@ See `AchievabilityLP_RD.solve_bracketing_lp` and `AchievabilityQP.solve_bracketi
 
 ---
 
-## 4. The direct simplex program (`DirectPriorOpt`)
+## 4. The simplex march (`phi_simplex`)
 
-The convex program can also be solved **directly on the simplex**, without cvxpy,
-for *any* kernel. The gradient of `Γ` is the analytic **water-fill** gradient
+The convex program is solved **directly on the simplex**, without cvxpy, for *any*
+kernel and *any* setting. The gradient of `Γ` is the analytic **water-fill**
+gradient
 
 $$ g(x) = \frac{\partial \Gamma}{\partial Q(x)}
-   = \sum_y \sum_{i \text{ fed by } x} \mathrm{ratio}_i \sum_{j \ge i} c_j \Phi'(\sigma_j), $$
+   = \sum_y \sum_{i \text{ fed by } x} \mathrm{ratio}_i \sum_{j \ge i} c_j \Phi'(\sigma_j)
+   = A^{\!\top}\!\big(c \odot \Phi'(A Q)\big). $$
 
-and the directional derivative along a feasible move `μ` (with `Σμ = 0`) is
-`⟨g − ḡ, μ⟩` — only the *centred* gradient acts on the simplex. Optimality is the
-**water-filling condition**: `g(x)` is equal on the support of `Q`. The solver
-marches with projected gradient (or Frank–Wolfe) using the exact line search on
-`Γ`.
+The prior obeys a **product of simplices** (`simplex_blocks`): one global simplex
+for channel/RD, one per source-type block for JSCC (the conditional codeword-type
+law). The solver marches with projected gradient (or Frank–Wolfe), projecting each
+block. Optimality is the **water-filling KKT condition** — `g(x)` flat on the
+support and dominated off it, *per block* — checked intrinsically by
+`check_kkt` (no second solver needed).
 
-`DirectPriorOpt` is the *unifying lens* and the scalable, warm-startable, and
-**exact-for-any-kernel** path (no bracketing gap). Its limitation is precision:
-`Φ` is flat past the clamp (not strongly concave), so a plain first-order march
-converges sublinearly and stalls near machine precision — and the converse
-(Dirac) is non-smooth and crawls. For high-precision single solves the QP/LP
-interior-point solvers remain preferred; a support-identifying active-set finish
-(future work) would close the gap.
+`phi_simplex` is the production achievability optimizer: scalable, cvxpy-free,
+warm-startable across a sweep, and exact for any kernel (no bracketing gap). Its
+limitation is precision: `Φ` is flat past the clamp, so first-order convergence is
+fast to engineering accuracy but stalls near machine precision; the QP /
+bracketing-LP solvers remain as exact validation anchors, and an active-set finish
+(future work) would close the last gap. (The earlier channel-only `DirectPriorOpt`
+prototype has been removed in favour of this general implementation.)
 
 ---
 

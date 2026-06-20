@@ -13,7 +13,7 @@ an *exact convex program*, not just a heuristic.
 | **achievable** bound | ✓ | ✓ | ✓ |
 | **converse** (meta-converse LP) | ✓ | ✓ | ✓ |
 | **prior-opt — converse** (LP) | ✓ | ✓ | ✓ |
-| **prior-opt — achievable** (QP / bracketing LP) | ✓ | ✓ | ✓ |
+| **prior-opt — achievable** (Φ-view simplex march, KKT-certified) | ✓ | ✓ | ✓ |
 
 ## Why this library
 
@@ -40,16 +40,18 @@ pip install -e ".[plots,test]"   # + matplotlib, pytest
 
 ```python
 import numpy as np
-from fbl.prioropt import AchievabilityQP
+from fbl.prioropt import phi_simplex as ps
 
-W = np.array([[0.9, 0.1], [0.0, 1.0]])    # Z-channel
+W = np.array([[0.9, 0.1], [0.0, 1.0]])     # Z-channel
 n = 12
+M = float(np.exp(n * 0.25))                 # codebook size at per-symbol rate 0.25
 
-# exact achievability-optimal prior (QP) at total rate R
-aqp = AchievabilityQP(W, n)
-res = aqp.solve_rcu_plus(R=n * 0.15)      # total rate = n * per-symbol rate
-print("optimal P_e:", res["P_e_exact"])   # -> ~7.6e-3
-print("optimal type prior:", res["Q_opt"])
+# achievability-optimal prior via the Φ-view simplex march (exact kernel)
+prog = ps.build_program("channel", W=W, n=n, kernel="exact")
+res = ps.optimize(prog, M)                  # first-order march on the simplex
+print("optimal P_e:", 1 - res["J"])         # success J -> error
+print("KKT-certified optimal:", res["kkt"]["kkt"])
+print("optimal type prior:", res["Q"])
 ```
 
 See [`examples/`](examples/) for the figure suite and [`RESULTS.md`](RESULTS.md)
@@ -72,7 +74,7 @@ The repo is meant to be read top to bottom on its GitHub page:
 
 ```
 src/fbl/            core engines (one-shot + type-based, all three settings)
-src/fbl/prioropt/   prior optimization (converse LP + achievability QP/LP)
+src/fbl/prioropt/   prior optimization (Φ-view march + KKT; exact QP/LP anchors)
 tests/              cross-check test suite
 examples/           figure generators (reduced settings, fast)
 docs/               THEORY · API · TESTING + architecture diagrams (*.mmd → *.png)
@@ -86,7 +88,7 @@ one-shot ↔ type-based agreement at small `n`; analytic RCU expectation ↔
 Monte-Carlo mean of random codes; converse ≤ achievable at every rate; and the
 prior-opt programs against single-letter brute-force optima. See
 [`docs/TESTING.md`](docs/TESTING.md) for what each check guarantees
-(**68 tests**), and [`tests/`](tests/) for the code.
+(**107 tests**), and [`tests/`](tests/) for the code.
 
 ## License
 

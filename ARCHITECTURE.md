@@ -35,20 +35,19 @@ flowchart TB
     gch ~~~ grd ~~~ gjs
   end
   subgraph PO["PRIOR OPTIMIZATION"]
-    subgraph ACH["achievability — convex"]
+    subgraph CORE["Φ-view (mechanism)"]
       direction LR
-      QP["AchievabilityQP<br/>channel · RCU⁺ → QP"]:::prior
-      LPRD["AchievabilityLP_RD<br/>RD · kernel → bracket LP"]:::prior
-      JS["AchievabilityJSCC<br/>JSCC · QP + bracket"]:::prior
-      EXC["ExcessRD<br/>indicator distortion"]:::prior
-      DIR["DirectPriorOpt<br/>unified Φ-view"]:::prior
-      QP ~~~ LPRD ~~~ JS ~~~ EXC ~~~ DIR
+      PV["phi_view<br/>J = cᵀΦ(A·Q) relaxation"]:::prior
+      PS["phi_simplex<br/>simplex march + KKT"]:::prior
+      PV ~~~ PS
     end
-    subgraph CONV["converse — LP"]
+    subgraph ANCH["exact solvers (anchors)"]
       direction LR
-      TBLP["TypeBasedBlockLP"]:::prior
-      TBLPRD["TypeBasedBlockLPRD"]:::prior
-      TBLP ~~~ TBLPRD
+      QP["AchievabilityQP<br/>channel · RCU⁺ QP"]:::prior
+      LPRD["AchievabilityLP_RD<br/>RD · bracket + exact_D"]:::prior
+      JS["AchievabilityJSCC<br/>JSCC · QP"]:::prior
+      EXC["ExcessRD<br/>indicator distortion"]:::prior
+      QP ~~~ LPRD ~~~ JS ~~~ EXC
     end
   end
   subgraph ENG["ENGINES · bounds"]
@@ -79,11 +78,10 @@ The same DAG as a text tree:
   examples/                         figure generators (reduced settings)
       ▲
   fbl.prioropt                      PRIOR OPTIMIZATION
-      AchievabilityQP   (channel)   exact QP (RCU⁺) + bracketing LP
-      AchievabilityLP_RD            bracketing LP (degree-M kernel)
-      AchievabilityJSCC             exact QP (L=1) + LP + memoryless_optimal
-      ExcessRD                      excess-distortion prior-opt
-      TypeBasedBlockLP / …RD        converse-prior LP (block / chord)
+      phi_view                      the relaxation J = cᵀΦ(A·Q) (Φ/Φ′/κ + evaluators)
+      phi_simplex                   the achievability optimizer: simplex march + KKT
+      AchievabilityQP/LP_RD/JSCC    exact QP / bracket solvers (validation anchors + _blocks)
+      ExcessRD                      excess-distortion (indicator-distortion wrapper)
       ▲
   fbl  (engines)                    BOUNDS
       OneShot{Channel,RD,JSCC}      exact, lifted |X|^n, + Monte-Carlo
@@ -152,7 +150,7 @@ flowchart TB
   P --> K3
   subgraph CONVERSE[" CONVERSE "]
     direction TB
-    K1["kernel = Dirac &nbsp;δ(w−w₀)"]:::conv --> F1["Φ(t) = min(t, w₀) &nbsp;(ramp)"]:::conv --> R1["piecewise-linear ⇒ LP"]:::conv --> S1["meta-converse LP<br/>optimize_prior · compute_converse<br/>TypeBasedBlockLP(RD)"]:::conv
+    K1["kernel = Dirac &nbsp;δ(w−w₀)"]:::conv --> F1["Φ(t) = min(t, w₀) &nbsp;(ramp)"]:::conv --> R1["piecewise-linear ⇒ LP"]:::conv --> S1["meta-converse LP<br/>optimize_prior · compute_converse"]:::conv
   end
   subgraph ACHA[" ACHIEVABILITY · RCU⁺ (list L=1) "]
     direction TB
@@ -165,7 +163,7 @@ flowchart TB
   S1 -.-> DIR
   S2 -.-> DIR
   S3 -.-> DIR
-  DIR["DirectPriorOpt — exact for ANY kernel<br/>first-order water-fill march on the simplex<br/>optimality: g(x)=∂Γ/∂Q equal on the support"]:::dir
+  DIR["phi_simplex march — exact for ANY kernel & setting<br/>first-order water-fill on a product of simplices (channel/RD/JSCC)<br/>KKT certificate: g(x) flat on the support per block"]:::dir
 ```
 </details>
 
@@ -179,26 +177,31 @@ chooses `Φ`** (`Φ' = 1 − g`, `g = ∫κ`):
 | RCU⁺ (L=1) | `e^R 1{w≤w₀}` | `t − ½e^R t²` clamped | piecewise-quadratic → **QP** |
 | list-L / RD | — | degree `L+1` / `1−(1−t)^M` | → LP / bracket |
 
-`DirectPriorOpt` solves this **directly on the simplex** by a first-order march
-(projected gradient / Frank–Wolfe) using the analytic water-fill gradient
-`g(x) = ∂Γ/∂Q(x)`; the directional derivative on the simplex is `⟨g − ḡ, μ⟩`
-(`Σμ = 0`), and optimality is the **water-filling** condition (`g(x)` equal on the
-support). It is exact for *any* kernel (no bracketing gap), cheap per-iteration
-(no cvxpy), and warm-startable across a rate sweep.
+`phi_simplex` (`fbl.prioropt.phi_simplex`) solves this **directly on the simplex**
+by a first-order march (projected gradient / Frank–Wolfe) using the analytic
+water-fill gradient `g(x) = ∂Γ/∂Q(x) = Aᵀ(c ⊙ Φ′(A·Q))`; optimality is the
+**water-filling** KKT condition (`g(x)` flat on the support, dominated off it),
+verified intrinsically by `check_kkt`. The prior obeys a **product of simplices**
+(`simplex_blocks`): one global simplex for channel/RD, one per source-type block
+for JSCC — so projection and the KKT certificate are per-block. It is exact for
+*any* kernel and *any* setting (no bracketing gap), cvxpy-free, and warm-startable
+across a sweep. `phi_view` (`fbl.prioropt.phi_view`) is the relaxation it sits on
+(the potentials Φ/Φ′/κ, the literal `(A,c)` preprocess, and the type-based
+evaluators `J_typebased_{channel,rd,jscc}`), validated against Monte-Carlo /
+one-shot.
 
-**Solver choice (recommended).**
+**Solver choice.**
 
-| task | default | `DirectPriorOpt` |
+| task | march (`phi_simplex`) | exact anchor |
 |---|---|---|
-| achievability, RCU⁺ | **exact QP** | alternative; scalable + warm-startable, first-order (slow to ~1e-9) |
-| achievability, general kernel (RD/JSCC list-L) | bracketing LP (`O(h²)`) | **exact** (true `Φ`, no bracket gap) |
-| converse | **meta-converse LP** (exact, one-shot) | unified view only; non-smooth (Dirac) → first-order crawls |
+| achievability, RCU⁺ (channel/JSCC) | **default** — fast, warm-startable, KKT-certified | `AchievabilityQP` / `AchievabilityJSCC.solve_rcu_plus` (validation) |
+| achievability, general kernel (RD exact/smooth) | **default** — exact (true `Φ`, no bracket gap) | `AchievabilityLP_RD.solve_bracketing_lp` (validation reference) |
+| converse | — | **meta-converse LP** (`optimize_prior` / `compute_converse`) |
 
-The direct program is the *unifying* lens and the scalable/exact-for-any-kernel
-path; the QP/LP remain the robust exact solvers (interior-point handles the
-flat/degenerate optimum that stalls plain first-order methods). A
-support-identifying active-set finish (future work) would make the direct program
-competitive at machine precision.
+The march is the production optimizer for every setting/kernel; the QP/bracketing-LP
+remain as exact validation anchors (and supply the `_blocks` staircase the march
+reads). First-order convergence is fast to engineering accuracy; an active-set
+finish (future work) would reach machine precision on the flat clamp region.
 
 ## 3. Conventions (read before comparing curves)
 

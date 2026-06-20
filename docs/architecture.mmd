@@ -15,20 +15,19 @@ flowchart TB
   end
 
   subgraph PO["PRIOR OPTIMIZATION"]
-    subgraph ACH["achievability — convex"]
+    subgraph CORE["Φ-view (mechanism)"]
       direction LR
-      QP["AchievabilityQP<br/>channel · RCU⁺ → QP"]:::prior
-      LPRD["AchievabilityLP_RD<br/>RD · kernel → bracket LP"]:::prior
-      JS["AchievabilityJSCC<br/>JSCC · QP + bracket"]:::prior
-      EXC["ExcessRD<br/>indicator distortion"]:::prior
-      DIR["DirectPriorOpt<br/>unified Φ-view"]:::prior
-      QP ~~~ LPRD ~~~ JS ~~~ EXC ~~~ DIR
+      PV["phi_view<br/>J = cᵀΦ(A·Q) relaxation"]:::prior
+      PS["phi_simplex<br/>simplex march + KKT"]:::prior
+      PV ~~~ PS
     end
-    subgraph CONV["converse — LP"]
+    subgraph ANCH["exact solvers (anchors)"]
       direction LR
-      TBLP["TypeBasedBlockLP"]:::prior
-      TBLPRD["TypeBasedBlockLPRD"]:::prior
-      TBLP ~~~ TBLPRD
+      QP["AchievabilityQP<br/>channel · RCU⁺ QP"]:::prior
+      LPRD["AchievabilityLP_RD<br/>RD · bracket + exact_D"]:::prior
+      JS["AchievabilityJSCC<br/>JSCC · QP"]:::prior
+      EXC["ExcessRD<br/>indicator distortion"]:::prior
+      QP ~~~ LPRD ~~~ JS ~~~ EXC
     end
   end
 
