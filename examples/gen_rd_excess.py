@@ -16,6 +16,7 @@ So excess distortion is the ordinary lossy-source-coding machinery applied to th
   G2  prior gap: achievability-optimal reproduction prior vs best memoryless
   G3  exact P_exc vs the exponential surrogate
   G4  coverage spectrum of the converse-optimal vs achievability-optimal prior
+  G5  marginalize: spectrum of each optimal prior vs its i.i.d. per-symbol marginal
 
 Run:  python examples/gen_rd_excess.py   ->   examples/figures/rd_exc_*.png
 """
@@ -167,8 +168,61 @@ def g4_fcurve_compare():
     return save(fig, f"{PREFIX}_g4_fcurve_compare.png")
 
 
+# ── G5 ─ marginalize the optimal reproduction prior (lifted Y^n) ──────────────
+def _marginal_iid_lifted(Q, n):
+    """Per-symbol marginal of a lifted binary Y^n prior, re-lifted i.i.d.
+    Q is over 2^n binary sequences (bit count = number of 1s)."""
+    ones = np.array([bin(y).count("1") for y in range(len(Q))])
+    q1 = float((Q * ones).sum() / n)             # P(reproduction symbol = 1)
+    Qm = np.array([q1 ** c * (1 - q1) ** (n - c) for c in ones])
+    return Qm / Qm.sum()
+
+
+def g5_marginalize():
+    """Each optimal reproduction prior over Y^n vs its i.i.d. per-symbol marginal
+    — the classical recipe for a memoryless prior."""
+    P_X, d_exc = _setup()
+    cover = (d_exc == 0).astype(float)
+    osr = OneShotRD(P_X, d_exc)
+    Rb = 0.8
+    M = float(np.exp(N * Rb * np.log(2))); w0 = 1.0 / M
+
+    P_conv, _ = osr.optimize_prior(M)
+    _, P_ach = _Pexc_opt(P_X, cover, M)
+    P_conv_m = _marginal_iid_lifted(P_conv, N)
+    P_ach_m = _marginal_iid_lifted(P_ach, N)
+
+    def pexc(Q):
+        return float(np.sum(P_X * (1 - cover @ Q) ** M))
+    series = [
+        ("single-threshold — full",      P_conv,   "C0", "-"),
+        ("single-threshold — marginal",  P_conv_m, "C0", "--"),
+        ("achievability-optimal — full", P_ach,    "C1", "-"),
+        ("achievability-opt — marginal", P_ach_m,  "C1", "--"),
+    ]
+    w = np.linspace(0, min(1.0, 10 * w0), 400)
+    fig, ax = plt.subplots(figsize=(7.8, 4.9))
+    ax.axvspan(0, w0, color="0.92", label=r"best-of-$M$ weight ($w\lesssim 1/M$)")
+    pe = {}
+    for label, Q, col, ls in series:
+        k, A = osr.compute_curve(Q)
+        pe[label] = pexc(Q)
+        ax.plot(w, np.interp(w, k, A), color=col, ls=ls, lw=2,
+                label=f"{label}: $P_{{exc}}$={pe[label]:.2e}")
+    ax.axvline(w0, color="k", ls=":", lw=1.2)
+    ax.set_xlabel("reproduction mass $w$"); ax.set_ylabel("excess spectrum $A(w)$")
+    ax.set_title(f"G5  {TITLE}, $R={Rb}$: marginalized vs full prior")
+    ax.legend(fontsize=8, loc="upper left"); ax.grid(True, alpha=0.3)
+    c_cost = pe["single-threshold — marginal"] / pe["single-threshold — full"]
+    a_cost = pe["achievability-opt — marginal"] / pe["achievability-optimal — full"]
+    print(f"  G5 marginalization cost (P_exc ratio): single-threshold {c_cost:.3f}x, "
+          f"achievability {a_cost:.3f}x")
+    return save(fig, f"{PREFIX}_g5_marginalize.png")
+
+
 def main():
-    for fn in (g1_mc_spread, g2_prior_gap, g3_bounds_vs_exact, g4_fcurve_compare):
+    for fn in (g1_mc_spread, g2_prior_gap, g3_bounds_vs_exact, g4_fcurve_compare,
+               g5_marginalize):
         print(f"[{fn.__name__}]"); fn()
 
 

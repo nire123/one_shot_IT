@@ -200,3 +200,26 @@ the exact achievability program is the practical payoff.
   never be a solver artefact.
 - **No closed-form oracle** exists in general, so every quantity is
   cross-validated; [`TESTING.md`](TESTING.md) lists what each check guarantees.
+
+### 7.1 Marginalization — the classical memoryless recipe
+
+The textbook way to turn *any* prior into a memoryless one is to take its
+**per-symbol marginal** and apply it i.i.d. For an optimized type prior `Q` this is
+
+$$ P(x) = \mathbb{E}_{T \sim Q}\left[\frac{T(x)}{n}\right], $$
+
+which is well-defined because the type prior is **exchangeable** — uniform within
+each type class, so the marginal at every coordinate is identical. Note this is a
+*different* construction from the [`memoryless_optimal`](API.md) baseline (which
+*re-optimizes* a single-letter prior); marginalization simply **projects** the
+`n`-letter optimum down to one symbol.
+
+The `G5` figures (see [`../RESULTS.md`](../RESULTS.md)) measure its cost and find
+two things. (1) The marginal of the **achievability-optimal** prior is itself
+near-optimal — a few percent — because at these blocklengths the optimum is
+already close to i.i.d. (the constant-composition gain is a large-`n` corner). (2)
+The **converse-optimal** prior, which is far too weak when *reused directly* for
+achievability (it over-fits the single threshold), becomes a good achievability
+prior **once marginalized**: marginalization discards exactly the non-product,
+single-threshold structure that the achievability integral penalizes. Code path:
+`marginal_input(Q, n, k)` → `memoryless_to_type_prior(·, n)` → `compute_curve`.

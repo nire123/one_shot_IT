@@ -5,6 +5,7 @@ Channel coding — the four thesis figures.
   G2  prior gap: achievability-optimal prior (QP) vs best memoryless
   G3  exact random-coding error vs the union-bound surrogate
   G4  error spectrum of the converse-optimal vs achievability-optimal prior
+  G5  marginalize: F-curve of each optimal prior vs its i.i.d. per-symbol marginal
 
 Run:  python examples/gen_channel.py   ->   examples/figures/channel_*.png
 """
@@ -17,6 +18,7 @@ from fbl.channel_achievable_utils import z_channel, kronecker_power
 from fbl.F_curve import (integrate_curve_channel_coding_exact,
                          integrate_curve_channel_coding_union_bound)
 from fbl.prioropt import AchievabilityQP, rcu_plus_from_F_curve
+from fbl.prioropt.typebased_block_lp import marginal_input
 
 W = z_channel(0.1)
 PREFIX = "channel"
@@ -134,8 +136,61 @@ def g4_fcurve_compare():
     return save(fig, f"{PREFIX}_g4_fcurve_compare.png")
 
 
+# ── G5 ─ marginalize the optimal prior to its i.i.d. per-symbol law ───────────
+def g5_marginalize():
+    """The classical error-exponent recipe for a memoryless prior is to take the
+    per-symbol *marginal* of a general prior and apply it i.i.d. Because the
+    optimal type prior is exchangeable (uniform within each type class), that
+    marginal is well-defined; here we compare the F-curve of each optimal prior
+    against the F-curve of its marginalized i.i.d. version, for both the
+    converse- and the achievability-optimal prior."""
+    n = 12
+    Rb = 0.25
+    R = n * Rb * np.log(2.0); M = float(np.exp(R)); w0 = 1.0 / M
+    k_x = W.shape[0]
+    tbc = TypeBasedChannel(W, n)
+    aqp = AchievabilityQP(W, n)
+
+    P_conv, _ = tbc.optimize_prior(M)
+    P_ach = aqp.solve_rcu_plus(R)["Q_opt"]
+    # marginalize each to its per-symbol law, then re-lift i.i.d.
+    P_conv_m = memoryless_to_type_prior(marginal_input(P_conv, n, k_x), n)
+    P_ach_m = memoryless_to_type_prior(marginal_input(P_ach, n, k_x), n)
+
+    series = [
+        ("converse-optimal — full",      P_conv,   "C0", "-"),
+        ("converse-optimal — marginal",  P_conv_m, "C0", "--"),
+        ("achievability-optimal — full", P_ach,    "C1", "-"),
+        ("achievability-opt — marginal", P_ach_m,  "C1", "--"),
+    ]
+
+    def espec(k, F, w):
+        return np.clip(1.0 - np.interp(w, k, F), 1e-12, None)
+    z = np.linspace(0.45 * R, 2.6 * R, 400); w = np.exp(-z)
+
+    fig, ax = plt.subplots(figsize=(7.8, 4.9))
+    ax.axvspan(R, z.max(), color="0.92", label=r"achievability integrates here ($z\geq R$)")
+    bnd = {}
+    for label, P, col, ls in series:
+        k, F = tbc.compute_curve(P)
+        bnd[label] = rcu_plus_from_F_curve(k, F, w0)
+        ax.semilogy(z, espec(k, F, w), color=col, ls=ls, lw=2,
+                    label=f"{label}: bound={bnd[label]:.1e}")
+    ax.axvline(R, color="k", ls=":", lw=1.2)
+    ax.set_xlabel("z = -log(PEP)   (nats)")
+    ax.set_ylabel("error spectrum   Pr[-log PEP <= z]")
+    ax.set_title(f"G5  {TITLE}, $n={n}$, $R={Rb}$ bits: marginalized vs full prior")
+    ax.legend(fontsize=8, loc="lower right"); ax.grid(True, which="both", alpha=0.3)
+    c_cost = (bnd["converse-optimal — marginal"] / bnd["converse-optimal — full"])
+    a_cost = (bnd["achievability-opt — marginal"] / bnd["achievability-optimal — full"])
+    print(f"  G5 marginalization cost (bound ratio): converse {c_cost:.3f}x, "
+          f"achievability {a_cost:.3f}x")
+    return save(fig, f"{PREFIX}_g5_marginalize.png")
+
+
 def main():
-    for fn in (g1_mc_spread, g2_prior_gap, g3_bounds_vs_exact, g4_fcurve_compare):
+    for fn in (g1_mc_spread, g2_prior_gap, g3_bounds_vs_exact, g4_fcurve_compare,
+               g5_marginalize):
         print(f"[{fn.__name__}]"); fn()
 
 

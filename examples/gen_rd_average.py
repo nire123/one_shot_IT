@@ -8,6 +8,7 @@ memoryless source + Hamming distortion), average-distortion flavour:
   G2  prior gap: achievability-optimal reproduction prior vs best memoryless
   G3  exact random-coding distortion vs the exponential surrogate
   G4  distortion spectrum of the converse-optimal vs achievability-optimal prior
+  G5  marginalize: A-curve of each optimal prior vs its i.i.d. per-symbol marginal
 
 Run:  python examples/gen_rd_average.py   ->   examples/figures/rd_avg_*.png
 """
@@ -19,6 +20,7 @@ from fbl.achievable_utils import setup_bms_hamming
 from fbl.type_based_utils import memoryless_to_type_prior
 from fbl.F_curve import integrate_curve_rd_exact, integrate_curve_rd_exp_bound
 from fbl.prioropt import AchievabilityLP_RD
+from fbl.prioropt.typebased_block_lp import marginal_input
 
 P = 0.25                                  # source bias  P_X = [1-p, p] (asymmetric)
 D_SINGLE = np.array([[0.0, 1.0], [1.0, 0.0]])   # single-letter Hamming
@@ -143,8 +145,54 @@ def g4_fcurve_compare():
     return save(fig, f"{PREFIX}_g4_fcurve_compare.png")
 
 
+# ── G5 ─ marginalize the optimal reproduction prior to its i.i.d. law ─────────
+def g5_marginalize():
+    """Per-symbol marginal of each optimal reproduction type prior, applied
+    i.i.d., vs the full prior — the classical recipe for a memoryless prior. The
+    type prior is exchangeable, so the marginal is well-defined."""
+    n = 8
+    Rb = 0.4
+    M = float(np.exp(n * Rb * np.log(2))); w0 = 1.0 / M
+    P_X1 = np.array([1 - P, P])
+    k_y = D_SINGLE.shape[1]
+    alr = AchievabilityLP_RD(P_X1, D_SINGLE, n)
+    tbr = TypeBasedRD(P_X1, D_SINGLE, n)
+
+    P_st, _ = tbr.optimize_prior(M)
+    P_ach = alr.solve_bracketing_lp(M, K=32)["Q_hi"]
+    P_st_m = memoryless_to_type_prior(marginal_input(P_st, n, k_y), n)
+    P_ach_m = memoryless_to_type_prior(marginal_input(P_ach, n, k_y), n)
+
+    series = [
+        ("single-threshold — full",      P_st,   "C0", "-"),
+        ("single-threshold — marginal",  P_st_m, "C0", "--"),
+        ("achievability-optimal — full", P_ach,  "C1", "-"),
+        ("achievability-opt — marginal", P_ach_m, "C1", "--"),
+    ]
+    w = np.linspace(0, min(1.0, 8 * w0), 400)
+    fig, ax = plt.subplots(figsize=(7.8, 4.9))
+    ax.axvspan(0, w0, color="0.92", label=r"best-of-$M$ weight ($w\lesssim 1/M$)")
+    D = {}
+    for label, Pr, col, ls in series:
+        k, A = tbr.compute_curve(Pr)
+        D[label] = alr.exact_D_rand(Pr, M) / n
+        ax.plot(w, np.interp(w, k, A) / n, color=col, ls=ls, lw=2,
+                label=f"{label}: D={D[label]:.3f}")
+    ax.axvline(w0, color="k", ls=":", lw=1.2)
+    ax.set_xlabel("reproduction mass $w$")
+    ax.set_ylabel("distortion spectrum $A(w)$ per symbol")
+    ax.set_title(f"G5  {TITLE}, $n={n}$, $R={Rb}$: marginalized vs full prior")
+    ax.legend(fontsize=8, loc="lower right"); ax.grid(True, alpha=0.3)
+    c_cost = D["single-threshold — marginal"] / D["single-threshold — full"]
+    a_cost = D["achievability-opt — marginal"] / D["achievability-optimal — full"]
+    print(f"  G5 marginalization cost (D ratio): single-threshold {c_cost:.3f}x, "
+          f"achievability {a_cost:.3f}x")
+    return save(fig, f"{PREFIX}_g5_marginalize.png")
+
+
 def main():
-    for fn in (g1_mc_spread, g2_prior_gap, g3_bounds_vs_exact, g4_fcurve_compare):
+    for fn in (g1_mc_spread, g2_prior_gap, g3_bounds_vs_exact, g4_fcurve_compare,
+               g5_marginalize):
         print(f"[{fn.__name__}]"); fn()
 
 

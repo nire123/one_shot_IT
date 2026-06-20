@@ -47,3 +47,27 @@ achievability, gives an 8.5 % error bound — 8.5× worse** than the
 achievability-optimal prior's 1.0 % — because it abandons the `z > R` tail that
 the achievability bound integrates. This 8.5× penalty is the concrete reason the
 converse and achievability prior optimizations are different problems.
+
+## G5 — marginalize: the per-symbol marginal as a memoryless prior
+
+![G5](../examples/figures/channel_g5_marginalize.png)
+
+The classical error-exponent recipe for a memoryless prior is to take the
+**per-symbol marginal** of a general prior and apply it i.i.d. Because the optimal
+type prior is exchangeable (uniform within each type class), the marginal is
+well-defined. G5 overlays each optimal prior's error spectrum (solid) against its
+marginalized i.i.d. version (dashed):
+
+| prior | full | marginalized i.i.d. |
+|---|---|---|
+| converse-optimal | 8.5e-2 | **1.1e-2** (≈8× better) |
+| achievability-optimal | 1.0e-2 | 1.0e-2 (+2.7 %) |
+
+Two things stand out. The **achievability-optimal prior's marginal is essentially
+optimal** — at `n=12` the full type-prior optimum is already nearly i.i.d., so
+marginalizing costs ~3 %. And the **converse-optimal prior, which is 8.5× too weak
+when reused directly for achievability, becomes good once marginalized**: the
+sharp single-threshold step (solid blue) is washed out into the smooth dashed
+curve, recovering an ~8× better achievability bound. Marginalization discards
+exactly the non-product structure that the converse prior over-fit to the single
+threshold.

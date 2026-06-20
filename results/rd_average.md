@@ -37,3 +37,14 @@ same** — the curves overlap, and the legend numbers show the small crossover:
 single-threshold prior wins at the threshold (`A(w₀)=0.013 < 0.014`),
 achievability-optimal prior wins on the integrated distortion (`D=0.153 < 0.155`).
 The prior choice barely matters here.
+
+## G5 — marginalize: the per-symbol marginal as a memoryless prior
+
+![G5](../examples/figures/rd_avg_g5_marginalize.png)
+
+Each optimal reproduction prior (solid) vs its i.i.d. per-symbol marginal (dashed)
+— the classical recipe for a memoryless prior. The distortion spectra nearly
+overlap: marginalization costs **+1.7 %** for the single-threshold prior and
+**+4.4 %** for the achievability-optimal prior (`D=0.153 → 0.160`). As in the rest
+of average-distortion RD, the prior structure barely matters — the marginal is an
+excellent memoryless prior here.

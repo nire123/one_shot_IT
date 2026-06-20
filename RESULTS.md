@@ -1,10 +1,12 @@
 # Results
 
-Finite-blocklength figures, one set per use case. Each set has four figures —
-**G1** Monte-Carlo spread vs the achievable expectation, **G2** the prior gap
-(achievability-optimal vs best memoryless), **G3** exact random coding vs a
-closed-form surrogate, **G4** the error/distortion spectrum of the
-converse-optimal vs the achievability-optimal prior.
+Finite-blocklength figures, one set per use case. Each set has up to five
+figures — **G1** Monte-Carlo spread vs the achievable expectation, **G2** the
+prior gap (achievability-optimal vs best memoryless), **G3** exact random coding
+vs a closed-form surrogate, **G4** the error/distortion spectrum of the
+converse-optimal vs the achievability-optimal prior, and **G5** the
+*marginalization* test — each optimal prior vs its i.i.d. per-symbol marginal
+(the classical error-exponent recipe for a memoryless prior).
 
 | Use case | Results | Generator |
 |---|---|---|
@@ -40,3 +42,23 @@ Excess distortion and channel coding are strongly prior-sensitive; average
 distortion is not; JSCC's non-product gain is essentially nil. See
 [`ARCHITECTURE.md`](ARCHITECTURE.md) for the conventions that make these
 comparisons apples-to-apples.
+
+## Marginalization (G5): is the per-symbol marginal a good memoryless prior?
+
+The classical error-exponent recipe for a memoryless prior is to take the
+**per-symbol marginal** of a general prior and apply it i.i.d. G5 tests it: each
+optimal prior's F-curve vs its marginalized i.i.d. version.
+
+| use case | achiev-optimal prior, marginalization cost | converse prior, marginalized |
+|---|---|---|
+| channel Z(0.1) | **+2.7 %** (marginal ≈ optimal) | **8× better** — `8.5e-2 → 1.1e-2` |
+| RD average | +4.4 % | +1.7 % |
+| RD excess | +4.9 % | +5.1 % |
+
+Two takeaways: (1) the **marginal of the achievability-optimal prior is itself a
+good prior** — a few percent of the full type-prior optimum, because at these `n`
+the optimum is nearly i.i.d.; (2) the **converse prior, which is terrible for
+achievability when reused directly, becomes good once marginalized** (channel:
+the sharp single-threshold step is washed out, recovering an ~8× better
+achievability bound). The marginal discards exactly the non-product, single-
+threshold structure that hurt the achievability integral.

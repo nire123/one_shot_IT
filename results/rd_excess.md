@@ -45,3 +45,16 @@ clearly **above** the achievability-optimal one. Reused for achievability, the
 converse prior gives **`P_exc = 4.5e-2` vs the optimal `1.6e-2` — 2.8× worse**.
 As in channel coding (and unlike average-distortion RD), the converse and
 achievability priors are genuinely different for excess distortion.
+
+## G5 — marginalize: the per-symbol marginal as a memoryless prior
+
+![G5](../examples/figures/rd_exc_g5_marginalize.png)
+
+Each optimal reproduction prior (solid) vs its i.i.d. per-symbol marginal (dashed).
+Unlike the spectra of the two *different* priors (which separate clearly — the
+converse prior sits well above the achievability one), **each prior's marginal
+tracks its own full version closely**: marginalization costs only **+5.1 %**
+(single-threshold, `P_exc = 4.5e-2 → 4.7e-2`) and **+4.9 %** (achievability,
+`1.6e-2 → 1.7e-2`). So even where the prior *family* matters a lot (the 2.8×
+converse-vs-achievability gap), going from the full type prior to its i.i.d.
+marginal costs little — the marginal is a good memoryless prior.
