@@ -81,3 +81,43 @@ def test_optimum_beats_uniform_channel():
     J_unif = ps.objective_grad(prog, np.ones(prog["num_q"]) / prog["num_q"], M_phi)[0]
     res = ps.optimize(prog, M_phi, method="pgd", max_iter=3000, tol=1e-10)
     assert res["J"] >= J_unif - 1e-12          # maximising success J
+
+
+# ------------------------------ KKT certificate: independent optimality proof ---
+@pytest.mark.parametrize("setting,kernel,n,Rb", [
+    ("channel", "rcu_plus", 6, 0.3),
+    ("channel", "exact",    6, 0.3),
+    ("rd",      "exact",    5, 0.45),
+    ("rd",      "smooth",   5, 0.45),
+])
+def test_march_optimum_satisfies_kkt(setting, kernel, n, Rb):
+    if setting == "channel":
+        prog = ps.build_program("channel", W=W, n=n, kernel=kernel)
+        M = np.exp(n * Rb * LN2) + 1.0
+    else:
+        prog = ps.build_program("rd", P_X=P_X, d=D1, n=n, kernel=kernel)
+        M = float(np.exp(n * Rb * LN2))
+    res = ps.optimize(prog, M, method="pgd", max_iter=5000, tol=1e-11)
+    cert = ps.check_kkt(prog, res["Q"], M)
+    assert cert["kkt"], cert
+
+
+def test_kkt_certifies_the_engine_qp():
+    """The QP's optimal prior must satisfy the Phi-view KKT condition -- a
+    cross-certification of the engine solver by the intrinsic criterion."""
+    n = 6
+    R = n * 0.3 * LN2
+    M_phi = np.exp(R) + 1.0
+    Q_qp = AchievabilityQP(W, n).solve_rcu_plus(R)["Q_opt"]
+    prog = ps.build_program("channel", W=W, n=n, kernel="rcu_plus")
+    cert = ps.check_kkt(prog, Q_qp, M_phi, tol=1e-5)
+    assert cert["kkt"], cert
+
+
+def test_kkt_fails_at_nonoptimal_prior():
+    """Negative control: the certificate must reject a non-optimal prior."""
+    n = 6
+    prog = ps.build_program("channel", W=W, n=n, kernel="rcu_plus")
+    M = np.exp(n * 0.3 * LN2) + 1.0
+    unif = np.ones(prog["num_q"]) / prog["num_q"]
+    assert not ps.check_kkt(prog, unif, M)["kkt"]

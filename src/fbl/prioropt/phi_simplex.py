@@ -78,6 +78,37 @@ def objective_grad(prog, Q, M):
     return J, g
 
 
+def check_kkt(prog, Q, M, support_tol=1e-6, tol=1e-5):
+    r"""
+    Certify Phi-view optimality of a candidate prior Q by the water-filling KKT
+    condition, independently of any other solver.
+
+    Maximising ``f = sense * J`` (concave) over the simplex, Q is optimal iff the
+    gradient ``grad f`` is flat on the support and dominated off it::
+
+        grad f_x = lambda      for x with Q_x > 0     (stationary)
+        grad f_x <= lambda     for x with Q_x = 0     (dual feasible)
+        lambda = max_x grad f_x
+
+    Returns dict(kkt, stationary, dual_feasible, support_spread,
+    off_support_excess, fw_gap, lambda, support_size).
+    """
+    Q = np.asarray(Q, float)
+    _, g = objective_grad(prog, Q, M)
+    gf = prog["sense"] * g                              # ascent gradient of f
+    lam = float(gf.max())
+    supp = Q > support_tol
+    spread = float(gf[supp].max() - gf[supp].min()) if supp.any() else 0.0
+    off_excess = float((gf[~supp] - lam).max()) if (~supp).any() else -np.inf
+    fw_gap = float(lam - gf @ Q)
+    stationary = spread <= tol
+    dual_feasible = off_excess <= tol
+    return {"kkt": bool(stationary and dual_feasible),
+            "stationary": bool(stationary), "dual_feasible": bool(dual_feasible),
+            "support_spread": spread, "off_support_excess": off_excess,
+            "fw_gap": fw_gap, "lambda": lam, "support_size": int(supp.sum())}
+
+
 def optimize(prog, M, method="pgd", max_iter=5000, tol=1e-11,
              obj_tol=1e-13, patience=8, warm_start=None, history=False):
     """
@@ -140,7 +171,8 @@ def optimize(prog, M, method="pgd", max_iter=5000, tol=1e-11,
             Q = Qn
             eta = min(step * 2.0, 1e6)
     J, _ = objective_grad(prog, Q, M)
-    out = {"Q": Q, "J": J, "gap": gap, "iters": it, "sense": sense}
+    out = {"Q": Q, "J": J, "gap": gap, "iters": it, "sense": sense,
+           "kkt": check_kkt(prog, Q, M)}
     if history:
         out["hist"] = hist
     return out
