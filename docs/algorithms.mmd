@@ -1,0 +1,34 @@
+%% fbl — the one unified prior-optimization algorithm (Φ-view).
+%% Source of truth for docs/algorithms.png. Render: python docs/render_diagram.py
+flowchart TB
+  classDef prog fill:#f3e9ff,stroke:#6a3ca6,color:#241040,font-weight:bold;
+  classDef conv fill:#e8ecff,stroke:#4456a6,color:#1a2240;
+  classDef ach1 fill:#e6f6e6,stroke:#3c7a3c,color:#163016;
+  classDef ach2 fill:#ffe9e6,stroke:#a64a3c,color:#3a1410;
+  classDef dir  fill:#fff6da,stroke:#9c7a1e,color:#3a2c08,font-weight:bold;
+
+  P["UNIFIED PROGRAM (one simplex optimisation)<br/>minimise &nbsp; P = 1 − cᵀ Φ(A·Q) &nbsp; over &nbsp; Q ∈ simplex<br/>A·Q = cumulative staircase masses σ &nbsp;·&nbsp; c = metric gaps νⱼ−νⱼ₊₁ &nbsp;·&nbsp; kernel chooses Φ (Φ′ = 1−∫κ)"]:::prog
+
+  P --> K1
+  P --> K2
+  P --> K3
+
+  subgraph CONVERSE[" CONVERSE "]
+    direction TB
+    K1["kernel = Dirac &nbsp;δ(w−w₀)"]:::conv --> F1["Φ(t) = min(t, w₀) &nbsp;(ramp)"]:::conv --> R1["piecewise-linear ⇒ LP"]:::conv --> S1["meta-converse LP<br/>optimize_prior · compute_converse<br/>TypeBasedBlockLP(RD)"]:::conv
+  end
+
+  subgraph ACHA[" ACHIEVABILITY · RCU⁺ (list L=1) "]
+    direction TB
+    K2["kernel = eᴿ·1{w≤w₀}"]:::ach1 --> F2["Φ(t) = t − ½eᴿt²  (clamped)"]:::ach1 --> R2["piecewise-quadratic ⇒ QP"]:::ach1 --> S2["exact convex QP<br/>AchievabilityQP · AchievabilityJSCC"]:::ach1
+  end
+
+  subgraph ACHB[" ACHIEVABILITY · general kernel (RD / excess / list-L) "]
+    direction TB
+    K3["kernel = general positive"]:::ach2 --> F3["Φ = 1−(1−t)ᴹ  /  degree L+1"]:::ach2 --> R3["secant ≥ truth ≥ tangent ⇒ bracketing LP"]:::ach2 --> S3["AchievabilityLP_RD · ExcessRD<br/>certified gap O(1/K²)"]:::ach2
+  end
+
+  S1 -.-> DIR
+  S2 -.-> DIR
+  S3 -.-> DIR
+  DIR["DirectPriorOpt — exact for ANY kernel<br/>first-order water-fill march on the simplex<br/>optimality: g(x)=∂Γ/∂Q equal on the support"]:::dir

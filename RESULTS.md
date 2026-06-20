@@ -14,13 +14,14 @@ converse-optimal vs the achievability-optimal prior.
 | JSCC | [results/jscc.md](results/jscc.md) | `examples/gen_jscc.py` |
 
 Reduced, fast settings (representative, not thesis-resolution). Every bound is
-backed by the cross-check suite in [`tests/`](tests/) (**64 tests passing**:
-52 engine cross-checks + 12 prior-optimization invariants).
+backed by the cross-check suite in [`tests/`](tests/) (**68 tests passing**:
+52 engine cross-checks + 16 prior-optimization invariants). See
+[`docs/TESTING.md`](docs/TESTING.md) for what each check guarantees.
 
 ```bash
 pip install -e ".[plots,test]"
 python examples/generate_all.py     # -> examples/figures/*.png
-pytest -q                           # 64 tests
+pytest -q                           # 68 tests (~25 min; target a file to iterate)
 ```
 
 ## Headline across use cases

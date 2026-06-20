@@ -4,6 +4,77 @@
 examples. Three information-theoretic **settings** (channel / RD / JSCC) appear in
 parallel throughout, in two implementation **flavours** (one-shot / type-based).
 
+> **Companion docs:** [THEORY](docs/THEORY.md) (the framework and why each kernel
+> gives a QP/LP/bracket) · [API](docs/API.md) (every public class & method) ·
+> [TESTING](docs/TESTING.md) (what each cross-check guarantees).
+
+## The library at a glance
+
+The dependency DAG is four layers — **infra → engines → prior-opt → examples** —
+with the three settings (channel / RD / JSCC) running in parallel through each.
+The achievable bound of every setting is integrated against a *kernel*; the
+prior-opt layer is the contribution, splitting cleanly into a **converse LP** and
+an **achievability** exact convex program.
+
+![fbl architecture](docs/architecture.png)
+
+<details><summary>Mermaid source (renders on GitHub; <code>python docs/render_diagram.py</code> regenerates the PNG)</summary>
+
+```mermaid
+flowchart TB
+  classDef infra  fill:#e8ecff,stroke:#4456a6,color:#1a2240;
+  classDef engine fill:#e6f6e6,stroke:#3c7a3c,color:#163016;
+  classDef prior  fill:#ffe9e6,stroke:#a64a3c,color:#3a1410;
+  classDef ex     fill:#fff6da,stroke:#9c7a1e,color:#3a2c08;
+
+  subgraph EX["EXAMPLES · generators"]
+    direction LR
+    gch["gen_channel"]:::ex
+    grd["gen_rd_average<br/>gen_rd_excess"]:::ex
+    gjs["gen_jscc"]:::ex
+    gch ~~~ grd ~~~ gjs
+  end
+  subgraph PO["PRIOR OPTIMIZATION"]
+    subgraph ACH["achievability — convex"]
+      direction LR
+      QP["AchievabilityQP<br/>channel · RCU⁺ → QP"]:::prior
+      LPRD["AchievabilityLP_RD<br/>RD · kernel → bracket LP"]:::prior
+      JS["AchievabilityJSCC<br/>JSCC · QP + bracket"]:::prior
+      EXC["ExcessRD<br/>indicator distortion"]:::prior
+      DIR["DirectPriorOpt<br/>unified Φ-view"]:::prior
+      QP ~~~ LPRD ~~~ JS ~~~ EXC ~~~ DIR
+    end
+    subgraph CONV["converse — LP"]
+      direction LR
+      TBLP["TypeBasedBlockLP"]:::prior
+      TBLPRD["TypeBasedBlockLPRD"]:::prior
+      TBLP ~~~ TBLPRD
+    end
+  end
+  subgraph ENG["ENGINES · bounds"]
+    direction LR
+    OSC["OneShotChannel"]:::engine
+    OSR["OneShotRD"]:::engine
+    OSJ["OneShotJSCC"]:::engine
+    TBC["TypeBasedChannel"]:::engine
+    TBR["TypeBasedRD"]:::engine
+    TBJ["TypeBasedJSCC"]:::engine
+    OSC ~~~ OSR ~~~ OSJ
+    TBC ~~~ TBR ~~~ TBJ
+  end
+  subgraph INF["INFRA · fbl core (private)"]
+    direction LR
+    TCC["type_class_core<br/>type enum · indexing"]:::infra
+    FC["F_curve<br/>F/A-curve integrators"]:::infra
+    UT["*_utils<br/>channels · sources · prior maps"]:::infra
+    TCC ~~~ FC ~~~ UT
+  end
+  EX ==> PO ==> ENG ==> INF
+```
+</details>
+
+The same DAG as a text tree:
+
 ```
   examples/                         figure generators (reduced settings)
       ▲
@@ -60,6 +131,43 @@ The converse is the achievability program with the **Dirac kernel** — used as 
 built-in self-check (`AchievabilityJSCC.solve_dirac_ramp` ≡ `compute_converse`).
 
 ### 2.1 The unified `Φ`-view and the direct simplex program
+
+Converse and achievability are **the same program**, distinguished only by the
+kernel that picks `Φ`. This is the conceptual centre of the library:
+
+![the unified Φ-view](docs/algorithms.png)
+
+<details><summary>Mermaid source</summary>
+
+```mermaid
+flowchart TB
+  classDef prog fill:#f3e9ff,stroke:#6a3ca6,color:#241040,font-weight:bold;
+  classDef conv fill:#e8ecff,stroke:#4456a6,color:#1a2240;
+  classDef ach1 fill:#e6f6e6,stroke:#3c7a3c,color:#163016;
+  classDef ach2 fill:#ffe9e6,stroke:#a64a3c,color:#3a1410;
+  classDef dir  fill:#fff6da,stroke:#9c7a1e,color:#3a2c08,font-weight:bold;
+  P["UNIFIED PROGRAM (one simplex optimisation)<br/>minimise &nbsp; P = 1 − cᵀ Φ(A·Q) &nbsp; over &nbsp; Q ∈ simplex<br/>A·Q = cumulative staircase masses σ &nbsp;·&nbsp; c = metric gaps νⱼ−νⱼ₊₁ &nbsp;·&nbsp; kernel chooses Φ (Φ′ = 1−∫κ)"]:::prog
+  P --> K1
+  P --> K2
+  P --> K3
+  subgraph CONVERSE[" CONVERSE "]
+    direction TB
+    K1["kernel = Dirac &nbsp;δ(w−w₀)"]:::conv --> F1["Φ(t) = min(t, w₀) &nbsp;(ramp)"]:::conv --> R1["piecewise-linear ⇒ LP"]:::conv --> S1["meta-converse LP<br/>optimize_prior · compute_converse<br/>TypeBasedBlockLP(RD)"]:::conv
+  end
+  subgraph ACHA[" ACHIEVABILITY · RCU⁺ (list L=1) "]
+    direction TB
+    K2["kernel = eᴿ·1{w≤w₀}"]:::ach1 --> F2["Φ(t) = t − ½eᴿt²  (clamped)"]:::ach1 --> R2["piecewise-quadratic ⇒ QP"]:::ach1 --> S2["exact convex QP<br/>AchievabilityQP · AchievabilityJSCC"]:::ach1
+  end
+  subgraph ACHB[" ACHIEVABILITY · general kernel (RD / excess / list-L) "]
+    direction TB
+    K3["kernel = general positive"]:::ach2 --> F3["Φ = 1−(1−t)ᴹ  /  degree L+1"]:::ach2 --> R3["secant ≥ truth ≥ tangent ⇒ bracketing LP"]:::ach2 --> S3["AchievabilityLP_RD · ExcessRD<br/>certified gap O(1/K²)"]:::ach2
+  end
+  S1 -.-> DIR
+  S2 -.-> DIR
+  S3 -.-> DIR
+  DIR["DirectPriorOpt — exact for ANY kernel<br/>first-order water-fill march on the simplex<br/>optimality: g(x)=∂Γ/∂Q equal on the support"]:::dir
+```
+</details>
 
 All of the above are one program, `minimize 1 − cᵀ Φ(A·Q)` over the simplex, where
 `A·Q` are the cumulative staircase masses, `c` the metric gaps, and the **kernel

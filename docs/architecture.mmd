@@ -1,0 +1,57 @@
+%% fbl — layered architecture (module dependency DAG).
+%% Source of truth for docs/architecture.png. Render: python docs/render_diagram.py
+flowchart TB
+  classDef infra  fill:#e8ecff,stroke:#4456a6,color:#1a2240;
+  classDef engine fill:#e6f6e6,stroke:#3c7a3c,color:#163016;
+  classDef prior  fill:#ffe9e6,stroke:#a64a3c,color:#3a1410;
+  classDef ex     fill:#fff6da,stroke:#9c7a1e,color:#3a2c08;
+
+  subgraph EX["EXAMPLES · generators"]
+    direction LR
+    gch["gen_channel"]:::ex
+    grd["gen_rd_average<br/>gen_rd_excess"]:::ex
+    gjs["gen_jscc"]:::ex
+    gch ~~~ grd ~~~ gjs
+  end
+
+  subgraph PO["PRIOR OPTIMIZATION"]
+    subgraph ACH["achievability — convex"]
+      direction LR
+      QP["AchievabilityQP<br/>channel · RCU⁺ → QP"]:::prior
+      LPRD["AchievabilityLP_RD<br/>RD · kernel → bracket LP"]:::prior
+      JS["AchievabilityJSCC<br/>JSCC · QP + bracket"]:::prior
+      EXC["ExcessRD<br/>indicator distortion"]:::prior
+      DIR["DirectPriorOpt<br/>unified Φ-view"]:::prior
+      QP ~~~ LPRD ~~~ JS ~~~ EXC ~~~ DIR
+    end
+    subgraph CONV["converse — LP"]
+      direction LR
+      TBLP["TypeBasedBlockLP"]:::prior
+      TBLPRD["TypeBasedBlockLPRD"]:::prior
+      TBLP ~~~ TBLPRD
+    end
+  end
+
+  subgraph ENG["ENGINES · bounds"]
+    direction LR
+    OSC["OneShotChannel"]:::engine
+    OSR["OneShotRD"]:::engine
+    OSJ["OneShotJSCC"]:::engine
+    TBC["TypeBasedChannel"]:::engine
+    TBR["TypeBasedRD"]:::engine
+    TBJ["TypeBasedJSCC"]:::engine
+    OSC ~~~ OSR ~~~ OSJ
+    TBC ~~~ TBR ~~~ TBJ
+  end
+
+  subgraph INF["INFRA · fbl core (private)"]
+    direction LR
+    TCC["type_class_core<br/>type enum · indexing"]:::infra
+    FC["F_curve<br/>F/A-curve integrators"]:::infra
+    UT["*_utils<br/>channels · sources · prior maps"]:::infra
+    TCC ~~~ FC ~~~ UT
+  end
+
+  EX ==> PO
+  PO ==> ENG
+  ENG ==> INF

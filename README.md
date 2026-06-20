@@ -55,6 +55,19 @@ print("optimal type prior:", res["Q_opt"])
 See [`examples/`](examples/) for the figure suite and [`RESULTS.md`](RESULTS.md)
 for the headline numbers and plots.
 
+## Documentation
+
+The repo is meant to be read top to bottom on its GitHub page:
+
+- [`ARCHITECTURE.md`](ARCHITECTURE.md) — design + the **architecture diagram** and
+  the unified `Φ`-view of the algorithms ([`docs/architecture.png`](docs/architecture.png),
+  [`docs/algorithms.png`](docs/algorithms.png)).
+- [`docs/THEORY.md`](docs/THEORY.md) — the PEP error-spectrum framework, derived
+  self-contained; why each kernel gives an LP / QP / bracketing LP.
+- [`docs/API.md`](docs/API.md) — every public class and method.
+- [`docs/TESTING.md`](docs/TESTING.md) — what each cross-check guarantees.
+- [`RESULTS.md`](RESULTS.md) + [`results/`](results/) — figures and headline numbers.
+
 ## Layout
 
 ```
@@ -62,6 +75,7 @@ src/fbl/            core engines (one-shot + type-based, all three settings)
 src/fbl/prioropt/   prior optimization (converse LP + achievability QP/LP)
 tests/              cross-check test suite
 examples/           figure generators (reduced settings, fast)
+docs/               THEORY · API · TESTING + architecture diagrams (*.mmd → *.png)
 ARCHITECTURE.md     design / library specification
 ```
 
@@ -71,7 +85,8 @@ Every bound is cross-checked (there is no closed-form oracle in general):
 one-shot ↔ type-based agreement at small `n`; analytic RCU expectation ↔
 Monte-Carlo mean of random codes; converse ≤ achievable at every rate; and the
 prior-opt programs against single-letter brute-force optima. See
-[`tests/`](tests/) and [`ARCHITECTURE.md`](ARCHITECTURE.md).
+[`docs/TESTING.md`](docs/TESTING.md) for what each check guarantees
+(**68 tests**), and [`tests/`](tests/) for the code.
 
 ## License
 
