@@ -49,16 +49,24 @@ The classical error-exponent recipe for a memoryless prior is to take the
 **per-symbol marginal** of a general prior and apply it i.i.d. G5 tests it: each
 optimal prior's F-curve vs its marginalized i.i.d. version.
 
-| use case | achiev-optimal prior, marginalization cost | converse prior, marginalized |
-|---|---|---|
-| channel Z(0.1) | **+2.7 %** (marginal ≈ optimal) | **8× better** — `8.5e-2 → 1.1e-2` |
-| RD average | +4.4 % | +1.7 % |
-| RD excess | +4.9 % | +5.1 % |
+**The achievable bound under each prior** (full vs marginalized), reproducible via
+[`examples/marginalize_table.py`](../examples/marginalize_table.py):
 
-Two takeaways: (1) the **marginal of the achievability-optimal prior is itself a
-good prior** — a few percent of the full type-prior optimum, because at these `n`
-the optimum is nearly i.i.d.; (2) the **converse prior, which is terrible for
-achievability when reused directly, becomes good once marginalized** (channel:
-the sharp single-threshold step is washed out, recovering an ~8× better
-achievability bound). The marginal discards exactly the non-product, single-
-threshold structure that hurt the achievability integral.
+| use case | metric | achiev-opt (full) | achiev-opt (marginal) | converse (full) | converse (marginal) |
+|---|---|---|---|---|---|
+| channel Z(0.1) | `P_e` | **0.010** | 0.0103 | 0.0847 | 0.0113 |
+| RD average | `D`/sym | **0.153** | 0.160 | 0.155 | 0.158 |
+| RD excess | `P_exc` | **0.0162** | 0.0170 | 0.0451 | 0.0474 |
+
+Reading across a row answers the question directly. **Marginalizing the
+achievability-optimal prior** barely moves the bound (+2.7 % / +4.4 % / +4.9 %):
+the marginal is essentially as good as the full type-prior optimum, because at
+these `n` the optimum is already nearly i.i.d. **Marginalizing the converse
+prior** is dramatic for the channel — `0.085 → 0.011`, an ~8× *improvement* that
+lands it right next to the achievability optimum — and modest for RD (where the
+two priors were close to begin with). The marginal discards exactly the
+non-product, single-threshold structure that the achievability integral
+penalizes, so the rescue is largest where that structure mattered most.
+
+(JSCC is omitted: its prior is a *conditional* law `Q_{X|V}` and its non-product
+gain is already ~null, so marginalization is a no-op of interest there.)
