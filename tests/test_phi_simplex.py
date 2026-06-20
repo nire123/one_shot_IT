@@ -121,3 +121,30 @@ def test_kkt_fails_at_nonoptimal_prior():
     M = np.exp(n * 0.3 * LN2) + 1.0
     unif = np.ones(prog["num_q"]) / prog["num_q"]
     assert not ps.check_kkt(prog, unif, M)["kkt"]
+
+
+# --------------------------------- JSCC: per-block march == exact QP, KKT -------
+PV = np.array([0.7, 0.3])
+WJ = np.array([[0.9, 0.1], [0.2, 0.8]])
+
+
+@pytest.mark.parametrize("n", [1, 2, 3])
+def test_jscc_march_matches_qp(n):
+    from fbl.prioropt.achievability_jscc import AchievabilityJSCC
+    aj = AchievabilityJSCC(PV, WJ, n)
+    M = aj.kv_n                                   # L=1: codebook pinned to k_v^n
+    prog = ps.build_program("jscc", P_V=PV, W=WJ, n=n, M=M)
+    res = ps.optimize(prog, M, method="pgd", max_iter=4000, tol=1e-9)
+    Pe_march = 1.0 - res["J"]
+    Pe_qp, _ = aj.solve_rcu_plus(M)
+    assert abs(Pe_march - Pe_qp) <= 1e-6 + 1e-4 * abs(Pe_qp), (Pe_march, Pe_qp)
+
+
+def test_jscc_march_satisfies_blockwise_kkt():
+    from fbl.prioropt.achievability_jscc import AchievabilityJSCC
+    n = 3
+    aj = AchievabilityJSCC(PV, WJ, n)
+    M = aj.kv_n
+    prog = ps.build_program("jscc", P_V=PV, W=WJ, n=n, M=M)
+    res = ps.optimize(prog, M, method="pgd", max_iter=6000, tol=1e-10)
+    assert ps.check_kkt(prog, res["Q"], M)["kkt"], res["kkt"]

@@ -2,21 +2,24 @@ r"""
 Achievability prior optimisation by a first-order march on the simplex.
 
 Built on the validated Phi-view relaxation (``phi_view``): the bound is
-``J(Q) = c^T Phi(A Q)`` over the probability simplex, concave for the channel
-error tail (maximise) and convex for the rate-distortion correct tail (minimise).
-Both are convex programs; we solve them *directly on the simplex* with projected
-gradient (or Frank-Wolfe), using the analytic water-fill gradient
+``J(Q) = c^T Phi(A Q)`` over a product of probability simplices, concave for the
+channel/JSCC error tail (maximise) and convex for the rate-distortion correct
+tail (minimise).  We solve it *directly on the simplex* with projected gradient
+(or Frank-Wolfe), using the analytic water-fill gradient
 
         grad J(x) = sum_blocks sum_{i fed by x} ratio_i sum_{j>=i} c_j Phi'(sigma_j),
 
 i.e. ``A^T (c .* Phi'(A Q))`` evaluated block by block (no dense ``A``).  This is
 the general, scalable, exact-for-any-kernel realisation of the unified program --
-the same first-order method works for every kernel because only ``Phi`` changes.
+the same first-order method works for every setting because only ``Phi`` and the
+simplex structure change.
 
-We optimise on the **type-based** staircase (the method-of-types representation),
-so the returned ``Q`` is a type prior directly comparable to the engine's QP /
-bracketing-LP optima.  ``sense=+1`` maximises ``J`` (channel success), ``sense=-1``
-minimises ``J`` (RD distortion); internally we always ascend ``sense*J``.
+The prior lives on the **type-based** staircase.  ``simplex_blocks`` partitions
+the prior variable into the simplices it must satisfy: a single global simplex for
+channel and rate-distortion, and one per source-type block for JSCC (the
+conditional codeword-type law).  ``sense=+1`` maximises ``J`` (channel/JSCC
+success), ``sense=-1`` minimises ``J`` (RD distortion); internally we always
+ascend ``sense*J``.
 """
 import numpy as np
 
@@ -34,13 +37,26 @@ def _project_simplex(v):
     return np.maximum(v - theta, 0.0)
 
 
-def build_program(setting, *, W=None, P_X=None, d=None, n=None, kernel="exact"):
+def _project_blocks(v, blocks):
+    """Project each segment v[s:e] onto its own probability simplex."""
+    out = np.array(v, float)
+    for s, e in blocks:
+        out[s:e] = _project_simplex(out[s:e])
+    return out
+
+
+def build_program(setting, *, W=None, P_X=None, d=None, n=None, P_V=None,
+                  M=None, kernel="exact"):
     """
     Assemble the simplex program from the type-based staircase.
 
-    Returns dict(blocks, num_q, phi, dphi, sense) where each block is
-    ``(c, ridx, ratio, offset)`` so that ``J = sum_b offset_b + c_b . Phi(sigma_b)``
-    with ``sigma_b = cumsum(ratio_b * Q[ridx_b])``.
+    Returns dict(blocks, num_q, phi, dphi, sense, simplex_blocks) where each
+    staircase block is ``(c, ridx, ratio, offset)`` so that
+    ``J = sum_b offset_b + c_b . Phi(sigma_b)``, ``sigma_b = cumsum(ratio_b * Q[ridx_b])``,
+    and ``simplex_blocks`` lists the (start, end) simplices the prior obeys.
+
+    JSCC needs ``P_V``, ``W``, ``n`` and the codebook size ``M`` (its potential
+    depends on the threshold ``w0 = k_v^n / M``); the kernel is fixed to RCU+.
     """
     if setting == "channel":
         from fbl.prioropt.achievability_qp import AchievabilityQP
@@ -50,8 +66,9 @@ def build_program(setting, *, W=None, P_X=None, d=None, n=None, kernel="exact"):
         for nu, ridx, ratio in aqp._blocks():
             c = nu - np.append(nu[1:], 0.0)               # value-gaps >= 0
             blocks.append((c, ridx, ratio, 0.0))
-        return {"blocks": blocks, "num_q": aqp.tb.num_q,
-                "phi": phi, "dphi": dphi, "sense": +1}     # maximise success
+        nq = aqp.tb.num_q
+        return {"blocks": blocks, "num_q": nq, "phi": phi, "dphi": dphi,
+                "sense": +1, "simplex_blocks": [(0, nq)]}     # maximise success
     elif setting == "rd":
         from fbl.prioropt.achievability_lp_rd import AchievabilityLP_RD
         alr = AchievabilityLP_RD(P_X, d, n)
@@ -60,13 +77,30 @@ def build_program(setting, *, W=None, P_X=None, d=None, n=None, kernel="exact"):
         for delta, ridx, ratio in alr._blocks():
             c = np.append(np.diff(delta), 0.0)            # gaps; last term inert
             blocks.append((c, ridx, ratio, float(delta[0])))
-        return {"blocks": blocks, "num_q": alr.tb.num_q,
-                "phi": phi, "dphi": dphi, "sense": -1}     # minimise distortion
+        nq = alr.tb.num_q
+        return {"blocks": blocks, "num_q": nq, "phi": phi, "dphi": dphi,
+                "sense": -1, "simplex_blocks": [(0, nq)]}     # minimise distortion
+    elif setting == "jscc":
+        from fbl.prioropt.achievability_jscc import AchievabilityJSCC
+        aj = AchievabilityJSCC(P_V, W, n)
+        tbj = aj.tbj
+        w0 = aj.kv_n / float(M)
+        phi = lambda s, _M: pv.phi_jscc_rcu(s, w0)        # threshold-parametrised
+        dphi = lambda s, _M: pv.dphi_jscc_rcu(s, w0)
+        blocks = []
+        for (st, ed, order, nu_s, nu_next) in aj._blocks:
+            ridx = tbj._T_vx_idx[st:ed][order]
+            ratio = tbj._ratio[st:ed][order]
+            blocks.append((nu_s - nu_next, ridx, ratio, 0.0))
+        nq = tbj._cond_vx.len
+        simplex_blocks = list(tbj._cond_vx.iterate_cond())   # one per source type
+        return {"blocks": blocks, "num_q": nq, "phi": phi, "dphi": dphi,
+                "sense": +1, "simplex_blocks": simplex_blocks}
     raise ValueError(setting)
 
 
 def objective_grad(prog, Q, M):
-    """Return (J, grad J) at type prior Q via the block water-fill formula."""
+    """Return (J, grad J) at prior Q via the block water-fill formula."""
     J = 0.0
     g = np.zeros(prog["num_q"])
     phi, dphi = prog["phi"], prog["dphi"]
@@ -78,65 +112,82 @@ def objective_grad(prog, Q, M):
     return J, g
 
 
+def _uniform_start(prog):
+    Q = np.zeros(prog["num_q"])
+    for s, e in prog["simplex_blocks"]:
+        Q[s:e] = 1.0 / (e - s)
+    return Q
+
+
+def _fw_gap(prog, gf, Q):
+    """Frank-Wolfe optimality gap, summed over the product of simplices."""
+    gap = 0.0
+    for s, e in prog["simplex_blocks"]:
+        gap += float(gf[s:e].max() - gf[s:e] @ Q[s:e])
+    return gap
+
+
 def check_kkt(prog, Q, M, support_tol=1e-6, tol=1e-5):
     r"""
     Certify Phi-view optimality of a candidate prior Q by the water-filling KKT
-    condition, independently of any other solver.
+    condition, **per simplex block**, independently of any other solver.
 
-    Maximising ``f = sense * J`` (concave) over the simplex, Q is optimal iff the
-    gradient ``grad f`` is flat on the support and dominated off it::
+    On each block, maximising ``f = sense * J`` is optimal iff the gradient is
+    flat on the block's support and dominated off it::
 
-        grad f_x = lambda      for x with Q_x > 0     (stationary)
-        grad f_x <= lambda     for x with Q_x = 0     (dual feasible)
-        lambda = max_x grad f_x
+        grad f_x = lambda_b   (x in block b, Q_x > 0),
+        grad f_x <= lambda_b  (x in block b, Q_x = 0),   lambda_b = max over block.
 
     Returns dict(kkt, stationary, dual_feasible, support_spread,
-    off_support_excess, fw_gap, lambda, support_size).
+    off_support_excess, fw_gap, support_size).
     """
     Q = np.asarray(Q, float)
     _, g = objective_grad(prog, Q, M)
-    gf = prog["sense"] * g                              # ascent gradient of f
-    lam = float(gf.max())
-    supp = Q > support_tol
-    spread = float(gf[supp].max() - gf[supp].min()) if supp.any() else 0.0
-    off_excess = float((gf[~supp] - lam).max()) if (~supp).any() else -np.inf
-    fw_gap = float(lam - gf @ Q)
+    gf = prog["sense"] * g
+    spread = 0.0
+    off_excess = -np.inf
+    supp_size = 0
+    for s, e in prog["simplex_blocks"]:
+        gb, qb = gf[s:e], Q[s:e]
+        lam = float(gb.max())
+        sup = qb > support_tol
+        supp_size += int(sup.sum())
+        if sup.any():
+            spread = max(spread, float(gb[sup].max() - gb[sup].min()))
+        if (~sup).any():
+            off_excess = max(off_excess, float((gb[~sup] - lam).max()))
     stationary = spread <= tol
     dual_feasible = off_excess <= tol
     return {"kkt": bool(stationary and dual_feasible),
             "stationary": bool(stationary), "dual_feasible": bool(dual_feasible),
             "support_spread": spread, "off_support_excess": off_excess,
-            "fw_gap": fw_gap, "lambda": lam, "support_size": int(supp.sum())}
+            "fw_gap": _fw_gap(prog, gf, Q), "support_size": supp_size}
 
 
 def optimize(prog, M, method="pgd", max_iter=5000, tol=1e-11,
              obj_tol=1e-13, patience=8, warm_start=None, history=False):
     """
-    Maximise ``sense*J`` over the simplex by a first-order march.
+    Maximise ``sense*J`` over the product of simplices by a first-order march.
 
-    method : 'pgd' (projected gradient + backtracking) or 'fw' (Frank-Wolfe).
-    Stops when the Frank-Wolfe optimality gap < ``tol`` OR the objective stalls
-    (relative improvement < ``obj_tol`` for ``patience`` iterations -- the flat
-    clamp region of the achievability potentials, where the gap plateaus although
-    the optimum is already reached).
-    Returns dict(Q, J, gap, iters, sense) (+ 'hist' of objective if history).
+    Stops when the Frank-Wolfe gap < ``tol`` OR the objective stalls (the flat
+    clamp region, where the gap plateaus though the optimum is reached).
+    Returns dict(Q, J, gap, iters, sense, kkt) (+ 'hist' if history).
     """
     sense = prog["sense"]
-    nq = prog["num_q"]
-    Q = (np.ones(nq) / nq if warm_start is None
-         else _project_simplex(np.asarray(warm_start, float)))
+    sb = prog["simplex_blocks"]
+    Q = (_uniform_start(prog) if warm_start is None
+         else _project_blocks(np.asarray(warm_start, float), sb))
     eta, gap, it, hist = 1.0, np.inf, 0, []
     f_prev, stall = -np.inf, 0
     for k in range(max_iter):
         J, g = objective_grad(prog, Q, M)
-        gf = sense * g                                 # ascent on f = sense*J
+        gf = sense * g
         if history:
             hist.append(J)
-        x = int(np.argmax(gf))
-        gap = float(gf[x] - gf @ Q)                    # Frank-Wolfe optimality gap
+        gap = _fw_gap(prog, gf, Q)
         it = k + 1
         f = sense * J
-        if f - f_prev <= obj_tol * (1.0 + abs(f)):     # objective plateau
+        if f - f_prev <= obj_tol * (1.0 + abs(f)):
             stall += 1
         else:
             stall = 0
@@ -144,26 +195,27 @@ def optimize(prog, M, method="pgd", max_iter=5000, tol=1e-11,
         if gap < tol or stall >= patience:
             break
         if method == "fw":
-            dvec = -Q.copy(); dvec[x] += 1.0           # toward vertex x
+            d = -Q.copy()                                  # per-block FW vertex
+            for s, e in sb:
+                d[s + int(np.argmax(gf[s:e]))] += 1.0
             a, b, gr = 0.0, 1.0, 0.6180339887
             cc, ee = b - gr * (b - a), a + gr * (b - a)
-            fc = sense * objective_grad(prog, Q + cc * dvec, M)[0]
-            fe = sense * objective_grad(prog, Q + ee * dvec, M)[0]
+            fc = sense * objective_grad(prog, Q + cc * d, M)[0]
+            fe = sense * objective_grad(prog, Q + ee * d, M)[0]
             for _ in range(40):
                 if fc < fe:
                     a, cc, fc = cc, ee, fe
                     ee = a + gr * (b - a)
-                    fe = sense * objective_grad(prog, Q + ee * dvec, M)[0]
+                    fe = sense * objective_grad(prog, Q + ee * d, M)[0]
                 else:
                     b, ee, fe = ee, cc, fc
                     cc = b - gr * (b - a)
-                    fc = sense * objective_grad(prog, Q + cc * dvec, M)[0]
-            Q = Q + 0.5 * (a + b) * dvec
-        else:                                          # projected gradient
-            f = sense * J
+                    fc = sense * objective_grad(prog, Q + cc * d, M)[0]
+            Q = Q + 0.5 * (a + b) * d
+        else:                                              # projected gradient
             step = eta
             for _ in range(60):
-                Qn = _project_simplex(Q + step * gf)
+                Qn = _project_blocks(Q + step * gf, sb)
                 fn = sense * objective_grad(prog, Qn, M)[0]
                 if fn >= f + 1e-4 * step * (gf @ (Qn - Q)):
                     break
@@ -180,10 +232,13 @@ def optimize(prog, M, method="pgd", max_iter=5000, tol=1e-11,
 
 # convenience one-call wrappers ------------------------------------------------
 def optimize_channel(W, n, M, kernel="rcu_plus", **kw):
-    prog = build_program("channel", W=W, n=n, kernel=kernel)
-    return optimize(prog, M, **kw)
+    return optimize(build_program("channel", W=W, n=n, kernel=kernel), M, **kw)
 
 
 def optimize_rd(P_X, d, n, M, kernel="exact", **kw):
-    prog = build_program("rd", P_X=P_X, d=d, n=n, kernel=kernel)
+    return optimize(build_program("rd", P_X=P_X, d=d, n=n, kernel=kernel), M, **kw)
+
+
+def optimize_jscc(P_V, W, n, M, **kw):
+    prog = build_program("jscc", P_V=P_V, W=W, n=n, M=M)
     return optimize(prog, M, **kw)
