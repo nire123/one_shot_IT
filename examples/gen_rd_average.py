@@ -21,7 +21,7 @@ from fbl import OneShotRD, TypeBasedRD
 from fbl.achievable_utils import setup_bms_hamming
 from fbl.type_based_utils import memoryless_to_type_prior
 from fbl.F_curve import integrate_curve_rd_exact, integrate_curve_rd_exp_bound
-from fbl.prioropt.typebased_block_lp import marginal_input
+from fbl.type_based_utils import marginal_input
 from fbl.prioropt import phi_simplex as ps
 from fbl.prioropt import phi_view as pv
 

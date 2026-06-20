@@ -22,6 +22,34 @@ from fbl.type_class_core import (
 )
 
 
+def marginal_input(Q_T, n, k_x):
+    """
+    Per-symbol marginal P(x) induced by a type prior P_T over compositions:
+    P(x) = E_{T ~ Q_T}[T[x] / n].  (Used to marginalize an optimized type prior
+    to its i.i.d. memoryless counterpart.)
+    """
+    marg = np.zeros(k_x)
+    for i_T, T in enumerate(enumerate_type_class(n, k_x)):
+        if Q_T[i_T] <= 0:
+            continue
+        marg += Q_T[i_T] * (T / n)
+    return marg
+
+
+def rcu_plus_from_F_curve(knots, F_repo, w_max):
+    """
+    Prior-side RCU+ bound P(R; Q) = 1 - (1/w_max) * int_0^{w_max} S(Q; w) dw,
+    where (knots, F_repo) is the success spectrum S(Q; .) and w_max = e^{-R}=1/M.
+    Piecewise-linear interpolation + trapezoidal integration.
+    """
+    knots = np.asarray(knots, dtype=float)
+    F = np.asarray(F_repo, dtype=float)
+    grid = np.linspace(0.0, w_max, 5001)
+    F_at_grid = np.interp(grid, knots, F)
+    integral = np.trapz(F_at_grid, grid)
+    return float(1.0 - (1.0 / w_max) * integral)
+
+
 def type_prior_to_one_shot(P_T_X, n, k_x):
     """
     Convert type-based prior to one-shot prior.

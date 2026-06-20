@@ -21,7 +21,7 @@ from fbl.channel_achievable_utils import z_channel, binary_symmetric_channel
 from fbl.prioropt import (
     AchievabilityQP, AchievabilityLP_RD, AchievabilityJSCC, ExcessRD,
 )
-from fbl.prioropt.typebased_block_lp import rcu_plus_from_F_curve
+from fbl.type_based_utils import rcu_plus_from_F_curve
 
 TOL = 1e-6
 Zc = z_channel(0.1)

@@ -22,7 +22,14 @@ import numpy as np
 import cvxpy as cp
 
 from fbl.rd_achievable_type_based import TypeBasedRateDistortion
-from fbl.prioropt.typebased_block_lp_rd import true_D_at_Q   # exact D at a given prior
+from fbl.F_curve import integrate_curve_rd_exact
+
+
+def true_D_at_Q(tb, P_T_Y, M, num_refined_points=2000):
+    """Exact best-of-M random-coding distortion at a reproduction type prior:
+    D = M(M-1) int_0^1 A_X(w)(1-w)^{M-2} dw, on the type-based A-curve."""
+    knots, A = tb.build_A_curve_type_based(P_T_Y)
+    return integrate_curve_rd_exact(knots, A, M, num_refined_points=num_refined_points)
 
 
 class AchievabilityLP_RD:

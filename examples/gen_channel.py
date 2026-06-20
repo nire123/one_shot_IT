@@ -22,7 +22,7 @@ from fbl.type_based_utils import memoryless_to_type_prior
 from fbl.channel_achievable_utils import z_channel, kronecker_power
 from fbl.F_curve import (integrate_curve_channel_coding_exact,
                          integrate_curve_channel_coding_union_bound)
-from fbl.prioropt.typebased_block_lp import marginal_input
+from fbl.type_based_utils import marginal_input
 from fbl.prioropt import phi_simplex as ps
 from fbl.prioropt import phi_view as pv
 

@@ -13,17 +13,10 @@ This module provides:
   - exact P_exc at a prior, the bracketing-LP optimum, and helpers to compare
     against the best memoryless prior and the chord-rule block-LP prior.
 """
-import os
-import sys
-
-
 import numpy as np
 
 from fbl.prioropt.achievability_lp_rd import AchievabilityLP_RD
-from fbl.rd_achievable_type_based import TypeBasedRateDistortion
 from fbl.type_based_utils import memoryless_to_type_prior
-from fbl.F_curve import integrate_curve_rd_exact
-from fbl.prioropt.typebased_block_lp_rd import TypeBasedBlockLPRD, grid_around_zstar, true_D_at_Q
 
 
 class ExcessRD:
