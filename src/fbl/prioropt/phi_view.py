@@ -180,3 +180,36 @@ def J_direct(pre, M, kernel, setting, ngrid=100001):
     if setting == "channel":
         return J_direct_channel(pre, M, kernel, ngrid)
     return J_direct_rd(pre, M, kernel, ngrid)
+
+
+# ----------------------------------------------------- type-based (method of types)
+# The same identity J = c^T Phi(A Q) holds on the type-based staircase, where the
+# "candidates" are (output-type, conditional-type) slabs: the metric order fixes
+# the value-gaps c and the slab masses ratio*Q give the cumulative profile sigma.
+# These evaluators read the staircase from the existing engines and apply the same
+# potentials, so a memoryless type prior reproduces the lifted one-shot value
+# (verified to machine precision in tests/test_phi_view.py).
+def J_typebased_channel(W, n, Q_type, M, kernel):
+    """c^T Phi(A Q) on the type-based channel staircase (error tail)."""
+    from fbl.prioropt.achievability_qp import AchievabilityQP
+    phi = CHANNEL_KERNELS[kernel][0]
+    Q = np.asarray(Q_type, float)
+    J = 0.0
+    for nu, ridx, ratio in AchievabilityQP(W, n)._blocks():
+        sigma = np.cumsum(ratio * Q[ridx])              # cumulative profile
+        c = nu - np.append(nu[1:], 0.0)                 # value-gaps >= 0
+        J += float(np.sum(c * phi(sigma, M)))
+    return J
+
+
+def J_typebased_rd(P_X, d, n, Q_type, M, kernel):
+    """c^T Phi(A Q) on the type-based RD staircase (correct tail)."""
+    from fbl.prioropt.achievability_lp_rd import AchievabilityLP_RD
+    phi = RD_KERNELS[kernel]
+    Q = np.asarray(Q_type, float)
+    J = 0.0
+    for delta, ridx, ratio in AchievabilityLP_RD(P_X, d, n)._blocks():
+        tau = np.cumsum(ratio * Q[ridx])                # coverage (ascending dist.)
+        J += float(delta[0])                            # offset (Phi(0)=1)
+        J += float(np.sum(np.diff(delta) * phi(tau[:-1], M)))
+    return J

@@ -10,12 +10,34 @@ fix a prior and check that the closed form ``J_formula = c^T Phi(A Q)`` equals a
 This is the numerical proof of Lemma p1var/p1nlp before any optimisation is built
 on top of it.
 """
+import itertools
+
 import numpy as np
 import pytest
 
 from fbl.prioropt.phi_view import (
     preprocess_channel, preprocess_rd, J_formula, J_direct,
+    J_typebased_channel, J_typebased_rd,
 )
+from fbl.channel_achievable_utils import kronecker_power
+from fbl.type_based_utils import memoryless_to_type_prior
+
+
+def _lift_prior(Q1, n):
+    return np.array([np.prod([Q1[i] for i in idx])
+                     for idx in itertools.product(range(len(Q1)), repeat=n)])
+
+
+def _lift_rd(P1, d1, n):
+    """Lifted (P_X^n, additive d^n) over the X^n / Y^n product alphabets."""
+    kx, ky = d1.shape
+    PXn = np.array([np.prod([P1[i] for i in idx])
+                    for idx in itertools.product(range(kx), repeat=n)])
+    dn = np.zeros((kx ** n, ky ** n))
+    for ix, xs in enumerate(itertools.product(range(kx), repeat=n)):
+        for iy, ys in enumerate(itertools.product(range(ky), repeat=n)):
+            dn[ix, iy] = sum(d1[xs[t], ys[t]] for t in range(n))
+    return PXn, dn
 
 # ----------------------------------------------------------------- fixtures ---
 CHANNELS = {
@@ -86,6 +108,39 @@ def test_rd_smooth_upper_bounds_distortion():
     for M in RD_M:
         assert (J_formula(pre, M, "smooth", "rd")
                 >= J_formula(pre, M, "exact", "rd") - 1e-9)
+
+
+# ---- type-based: c^T Phi(A Q) on the method-of-types staircase == lifted one-shot
+# Proves the identity holds in the type-based representation (the same J as the
+# lifted |X|^n computation, for a memoryless type prior), to machine precision.
+@pytest.mark.parametrize("kernel", ["exact", "rcu_plus"])
+@pytest.mark.parametrize("n", [2, 3])
+def test_channel_typebased_matches_lifted(n, kernel):
+    W = CHANNELS["Z(0.1)"]
+    Q1 = np.array([0.6, 0.4])
+    Q_type = memoryless_to_type_prior(Q1, n)
+    pre = preprocess_channel(kronecker_power(W, n), _lift_prior(Q1, n))
+    for M in [3.0, 8.0]:
+        jt = J_typebased_channel(W, n, Q_type, M, kernel)
+        jl = J_formula(pre, M, kernel, "channel")
+        assert abs(jt - jl) <= 1e-10 + 1e-9 * abs(jl), (
+            f"n={n} {kernel} M={M}: type={jt:.8f} lifted={jl:.8f}")
+
+
+@pytest.mark.parametrize("kernel", ["exact", "smooth"])
+@pytest.mark.parametrize("n", [1, 2, 3])
+def test_rd_typebased_matches_lifted(n, kernel):
+    P1 = np.array([0.75, 0.25])
+    d1 = np.array([[0.0, 1.0], [1.0, 0.0]])
+    Q1 = np.array([0.6, 0.4])
+    Q_type = memoryless_to_type_prior(Q1, n)
+    PXn, dn = _lift_rd(P1, d1, n)
+    pre = preprocess_rd(PXn, dn, _lift_prior(Q1, n))
+    for M in [3.0, 8.0]:
+        jt = J_typebased_rd(P1, d1, n, Q_type, M, kernel)
+        jl = J_formula(pre, M, kernel, "rd")
+        assert abs(jt - jl) <= 1e-10 + 1e-9 * abs(jl), (
+            f"n={n} {kernel} M={M}: type={jt:.8f} lifted={jl:.8f}")
 
 
 # ------------ tie RD-exact to the trusted lifted one-shot path (= Monte-Carlo) --
