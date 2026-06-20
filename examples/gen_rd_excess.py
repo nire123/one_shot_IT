@@ -1,24 +1,19 @@
 """
-Rate-distortion (EXCESS distortion) — the four thesis figures.
+Rate-distortion (EXCESS distortion) -- results for the pinned case
+BMS(p=0.25), block-Hamming, threshold T=1, n=6.
 
-Excess distortion is the probability that the block distortion exceeds a
-threshold, ``P_exc = Pr[d(X, X_hat) > T]``.  For a random size-M codebook this is
-exactly the best-of-M of the **block-distortion indicator** ``d_exc = 1{d > T}``:
+Excess distortion is best-of-M of the block indicator d_exc = 1{Hamming > T}:
+    P_exc(Q) = sum_x P_X(x) (1 - q(x))^M,   q(x) = Q{y : d(x,y) <= T}.
+This is a lifted Y^n quantity (the per-letter indicator is degenerate), so all
+figures stay at n=6 (the rare-event Monte-Carlo for G1 also needs small n).
 
-    P_exc(Q) = E_X[ min_{y in C} 1{d(X,y) > T} ] = sum_x P_X(x) (1 - q(x))^M,
-    q(x) = Q{ y : d(x,y) <= T }   (the per-source coverage probability).
-
-So excess distortion is the ordinary lossy-source-coding machinery applied to the
-0/1 indicator distortion -- no new derivation.  We work in the lifted X^n space
-(exact, small n), with binary memoryless source + block-Hamming distortion.
-
-  G1  Monte-Carlo spread of realised P_exc vs the analytic expectation
-  G2  prior gap: achievability-optimal reproduction prior vs best memoryless
+  G1  bound vs Monte-Carlo
+  G2  prior gap: optimal achievable prior vs optimal memoryless vs
+      marginal-memoryless (achievable / converse)            -- the centerpiece
   G3  exact P_exc vs the exponential surrogate
-  G4  coverage spectrum of the converse-optimal vs achievability-optimal prior
-  G5  marginalize: spectrum of each optimal prior vs its i.i.d. per-symbol marginal
+  G4  excess spectrum: achievability- vs converse-optimal prior
 
-Run:  python examples/gen_rd_excess.py   ->   examples/figures/rd_exc_*.png
+Run:  python examples/gen_rd_excess.py  ->  examples/figures/rd_exc_*.png
 """
 import numpy as np
 import cvxpy as cp
@@ -28,28 +23,27 @@ from fbl import OneShotRD
 from fbl.achievable_utils import binary_memoryless_source, hamming_distortion
 from fbl.F_curve import integrate_curve_rd_exp_bound
 
-P = 0.25                      # source bias
-N = 6                         # blocklength (lifted, exact)
-T = 1                         # excess threshold on block Hamming: P_exc = Pr[Hamming > 1]
+P = 0.25
+N = 6
+T = 1
 PREFIX = "rd_exc"
-TITLE = f"RD excess distortion (BMS p={P}, $n={N}$, $T={T}$)"
+TITLE = f"RD excess (BMS p={P}, $n={N}$, $T={T}$)"
+LN2 = np.log(2.0)
 
 
 def _setup():
     P_X = binary_memoryless_source(P, N)
     H = hamming_distortion(N)
-    d_exc = (H > T).astype(float)            # block-distortion indicator
+    d_exc = (H > T).astype(float)
     return P_X, d_exc
 
 
 def _Pexc_memoryless(P_X, cover, q1, M):
-    """Exact P_exc for the i.i.d. reproduction prior with single-letter bias q1."""
     n = int(round(np.log2(len(P_X))))
     Qy = np.array([q1[1] ** bin(y).count("1") * q1[0] ** (n - bin(y).count("1"))
                    for y in range(len(P_X))])
     Qy /= Qy.sum()
-    q = cover @ Qy
-    return float(np.sum(P_X * (1 - q) ** M))
+    return float(np.sum(P_X * (1 - cover @ Qy) ** M))
 
 
 def _Pexc_opt(P_X, cover, M):
@@ -62,6 +56,17 @@ def _Pexc_opt(P_X, cover, M):
     return float(obj.value), np.asarray(Q.value, float)
 
 
+def _marginal_iid_lifted(Q, n):
+    ones = np.array([bin(y).count("1") for y in range(len(Q))])
+    q1 = float((Q * ones).sum() / n)
+    Qm = np.array([q1 ** c * (1 - q1) ** (n - c) for c in ones])
+    return Qm / Qm.sum()
+
+
+def _pexc(P_X, cover, Q, M):
+    return float(np.sum(P_X * (1 - cover @ Q) ** M))
+
+
 # ── G1 ───────────────────────────────────────────────────────────────────────
 def g1_mc_spread():
     P_X, d_exc = _setup()
@@ -69,8 +74,8 @@ def g1_mc_spread():
     Y = d_exc.shape[1]
     Q = np.ones(Y) / Y
     curve = osr.compute_curve(Q)
-    R_bits = np.linspace(0.25, 0.85, 12)      # cap: MC cannot estimate rarer events
-    Ms = [max(2, int(round(np.exp(N * Rb * np.log(2))))) for Rb in R_bits]
+    R_bits = np.linspace(0.25, 0.85, 12)
+    Ms = [max(2, int(round(np.exp(N * Rb * LN2)))) for Rb in R_bits]
     rng = np.random.default_rng(0)
 
     fig, ax = plt.subplots(figsize=(7.2, 4.6))
@@ -78,42 +83,50 @@ def g1_mc_spread():
         pe = [max(osr.evaluate(osr.draw_random_code(Q, M, rng)), 1e-6) for M in Ms]
         ax.semilogy(R_bits, pe, color="C0", alpha=0.10, lw=0.8)
     ax.plot([], [], color="C0", alpha=0.4, label="60 random codebooks")
-    exp = [osr.theory(curve, M) for M in Ms]
-    ax.semilogy(R_bits, exp, "k-", lw=2.2, label="expectation (exact)")
+    ax.semilogy(R_bits, [osr.theory(curve, M) for M in Ms], "k-", lw=2.2,
+                label="expectation (exact)")
     ax.set_xlabel("rate $R$ (bits/sym)"); ax.set_ylabel(r"excess prob. $P_{exc}$")
-    ax.set_title(f"G1  {TITLE}: random-code spread")
+    ax.set_title(f"G1  {TITLE}: bound vs Monte-Carlo")
     ax.legend(fontsize=9); ax.grid(True, which="both", alpha=0.3)
     return save(fig, f"{PREFIX}_g1_mc_spread.png")
 
 
-# ── G2 ───────────────────────────────────────────────────────────────────────
+# ── G2 ─ prior gap ───────────────────────────────────────────────────────────
 def g2_prior_gap():
     P_X, d_exc = _setup()
     cover = (d_exc == 0).astype(float)
     osr = OneShotRD(P_X, d_exc)
-    qgrid = np.linspace(0.04, 0.96, 21)
-    R_bits = np.linspace(0.3, 0.95, 9)        # reliable range (converse LP above solver floor)
+    qgrid = np.linspace(0.02, 0.98, 33)
+    R_bits = np.linspace(0.3, 0.95, 9)
 
-    pe_opt, pe_ml, pe_conv = [], [], []
+    pe_ach, pe_ml, pe_am, pe_cm, pe_conv = [], [], [], [], []
     for Rb in R_bits:
-        M = float(np.exp(N * Rb * np.log(2)))
-        pe_opt.append(_Pexc_opt(P_X, cover, M)[0])
+        M = float(np.exp(N * Rb * LN2))
+        _, Q_ach = _Pexc_opt(P_X, cover, M)
+        Q_conv, st = osr.optimize_prior(M)
+        pe_ach.append(_pexc(P_X, cover, Q_ach, M))
         pe_ml.append(min(_Pexc_memoryless(P_X, cover, np.array([1 - q, q]), M) for q in qgrid))
-        pe_conv.append(osr.optimize_prior(M)[1])
-    pe_opt, pe_ml, pe_conv = map(np.array, (pe_opt, pe_ml, pe_conv))
-    gain = (pe_ml - pe_opt) / pe_ml * 100.0
+        pe_am.append(_pexc(P_X, cover, _marginal_iid_lifted(Q_ach, N), M))
+        pe_cm.append(_pexc(P_X, cover, _marginal_iid_lifted(Q_conv, N), M))
+        pe_conv.append(st)
+    A = lambda v: np.array(v)
+    pe_ach, pe_ml, pe_am, pe_cm, pe_conv = map(A, (pe_ach, pe_ml, pe_am, pe_cm, pe_conv))
+    gain = (pe_ml - pe_ach) / pe_ml * 100.0
 
-    fig, (ax, ax2) = plt.subplots(1, 2, figsize=(11, 4.3))
-    ax.semilogy(R_bits, pe_ml, "o-", label="best memoryless prior")
-    ax.semilogy(R_bits, pe_opt, "s-", label="achievability-optimal prior")
-    ax.semilogy(R_bits, pe_conv, "k--", label="single-threshold LP")
+    fig, (ax, ax2) = plt.subplots(1, 2, figsize=(11.4, 4.4))
+    ax.semilogy(R_bits, pe_ml, "o-", color="C0", label="optimal memoryless")
+    ax.semilogy(R_bits, pe_am, "v--", color="C2", label="marginal memoryless (achiev.)")
+    ax.semilogy(R_bits, pe_cm, "^:", color="C3", label="marginal memoryless (converse)")
+    ax.semilogy(R_bits, pe_ach, "s-", color="C1", label="optimal achievable prior")
+    ax.semilogy(R_bits, pe_conv, "k-", lw=1, alpha=0.6, label="single-threshold (converse)")
     ax.set_xlabel("rate $R$ (bits/sym)"); ax.set_ylabel(r"$P_{exc}$")
-    ax.set_title(f"G2  {TITLE}: prior gap"); ax.legend(fontsize=8)
+    ax.set_title(f"G2  {TITLE}: prior gap"); ax.legend(fontsize=7.5)
     ax.grid(True, which="both", alpha=0.3)
     ax2.plot(R_bits, gain, "s-", color="C1")
-    ax2.set_xlabel("rate $R$ (bits/sym)"); ax2.set_ylabel("gain over memoryless (%)")
-    ax2.set_title("prior-family gap"); ax2.grid(True, alpha=0.3)
-    print(f"  G2 max gain over memoryless: {np.nanmax(gain):.2f}%")
+    ax2.set_xlabel("rate $R$ (bits/sym)")
+    ax2.set_ylabel("gain of optimal over best memoryless (%)")
+    ax2.set_title("non-product prior gain"); ax2.grid(True, alpha=0.3)
+    print(f"  G2: max gain {np.nanmax(gain):.2f}%")
     return save(fig, f"{PREFIX}_g2_prior_gap.png")
 
 
@@ -124,7 +137,7 @@ def g3_bounds_vs_exact():
     Y = d_exc.shape[1]
     curve = osr.compute_curve(np.ones(Y) / Y)
     R_bits = np.linspace(0.25, 1.5, 16)
-    Ms = [np.exp(N * Rb * np.log(2)) for Rb in R_bits]
+    Ms = [np.exp(N * Rb * LN2) for Rb in R_bits]
     ex = [osr.theory(curve, M) for M in Ms]
     eb = [min(1.0, integrate_curve_rd_exp_bound(*curve, M)) for M in Ms]
 
@@ -143,12 +156,10 @@ def g4_fcurve_compare():
     cover = (d_exc == 0).astype(float)
     osr = OneShotRD(P_X, d_exc)
     Rb = 0.8
-    M = float(np.exp(N * Rb * np.log(2)))
-    w0 = 1.0 / M
-
-    P_conv, st_conv = osr.optimize_prior(M)            # single-threshold prior + value
-    pe_ach, P_ach = _Pexc_opt(P_X, cover, M)           # achievability-optimal prior
-    pe_conv = float(np.sum(P_X * (1 - cover @ P_conv) ** M))
+    M = float(np.exp(N * Rb * LN2)); w0 = 1.0 / M
+    P_conv, st_conv = osr.optimize_prior(M)
+    pe_ach, P_ach = _Pexc_opt(P_X, cover, M)
+    pe_conv = _pexc(P_X, cover, P_conv, M)
 
     ks, As = osr.compute_curve(P_conv)
     ka, Aa = osr.compute_curve(P_ach)
@@ -157,72 +168,19 @@ def g4_fcurve_compare():
     fig, ax = plt.subplots(figsize=(7.8, 4.9))
     ax.axvspan(0, w0, color="0.92", label=r"best-of-$M$ weight ($w\lesssim 1/M$)")
     ax.plot(w, np.interp(w, ks, As), color="C0", lw=2,
-            label=f"single-threshold prior\n   LP={st_conv:.2e}  |  $P_{{exc}}$={pe_conv:.2e}")
+            label=f"converse-optimal prior  ($P_{{exc}}$={pe_conv:.2e})")
     ax.plot(w, np.interp(w, ka, Aa), color="C1", lw=2,
-            label=f"achievability-optimal prior\n   $P_{{exc}}$={pe_ach:.2e}  (min)")
+            label=f"achievability-optimal prior  ($P_{{exc}}$={pe_ach:.2e})")
     ax.axvline(w0, color="k", ls=":", lw=1.2)
     ax.set_xlabel("reproduction mass $w$"); ax.set_ylabel("excess spectrum $A(w)$")
-    ax.set_title(f"G4  {TITLE}, $R={Rb}$: converse vs achievability prior")
+    ax.set_title(f"G4  {TITLE}, $R={Rb}$: achievable vs converse prior")
     ax.legend(fontsize=8, loc="upper left"); ax.grid(True, alpha=0.3)
-    print(f"  G4 converse P_exc={pe_conv:.3e}, achievability P_exc={pe_ach:.3e}")
+    print(f"  G4: converse P_exc={pe_conv:.3e}, achievable P_exc={pe_ach:.3e}")
     return save(fig, f"{PREFIX}_g4_fcurve_compare.png")
 
 
-# ── G5 ─ marginalize the optimal reproduction prior (lifted Y^n) ──────────────
-def _marginal_iid_lifted(Q, n):
-    """Per-symbol marginal of a lifted binary Y^n prior, re-lifted i.i.d.
-    Q is over 2^n binary sequences (bit count = number of 1s)."""
-    ones = np.array([bin(y).count("1") for y in range(len(Q))])
-    q1 = float((Q * ones).sum() / n)             # P(reproduction symbol = 1)
-    Qm = np.array([q1 ** c * (1 - q1) ** (n - c) for c in ones])
-    return Qm / Qm.sum()
-
-
-def g5_marginalize():
-    """Each optimal reproduction prior over Y^n vs its i.i.d. per-symbol marginal
-    — the classical recipe for a memoryless prior."""
-    P_X, d_exc = _setup()
-    cover = (d_exc == 0).astype(float)
-    osr = OneShotRD(P_X, d_exc)
-    Rb = 0.8
-    M = float(np.exp(N * Rb * np.log(2))); w0 = 1.0 / M
-
-    P_conv, _ = osr.optimize_prior(M)
-    _, P_ach = _Pexc_opt(P_X, cover, M)
-    P_conv_m = _marginal_iid_lifted(P_conv, N)
-    P_ach_m = _marginal_iid_lifted(P_ach, N)
-
-    def pexc(Q):
-        return float(np.sum(P_X * (1 - cover @ Q) ** M))
-    series = [
-        ("single-threshold — full",      P_conv,   "C0", "-"),
-        ("single-threshold — marginal",  P_conv_m, "C0", "--"),
-        ("achievability-optimal — full", P_ach,    "C1", "-"),
-        ("achievability-opt — marginal", P_ach_m,  "C1", "--"),
-    ]
-    w = np.linspace(0, min(1.0, 10 * w0), 400)
-    fig, ax = plt.subplots(figsize=(7.8, 4.9))
-    ax.axvspan(0, w0, color="0.92", label=r"best-of-$M$ weight ($w\lesssim 1/M$)")
-    pe = {}
-    for label, Q, col, ls in series:
-        k, A = osr.compute_curve(Q)
-        pe[label] = pexc(Q)
-        ax.plot(w, np.interp(w, k, A), color=col, ls=ls, lw=2,
-                label=f"{label}: $P_{{exc}}$={pe[label]:.2e}")
-    ax.axvline(w0, color="k", ls=":", lw=1.2)
-    ax.set_xlabel("reproduction mass $w$"); ax.set_ylabel("excess spectrum $A(w)$")
-    ax.set_title(f"G5  {TITLE}, $R={Rb}$: marginalized vs full prior")
-    ax.legend(fontsize=8, loc="upper left"); ax.grid(True, alpha=0.3)
-    c_cost = pe["single-threshold — marginal"] / pe["single-threshold — full"]
-    a_cost = pe["achievability-opt — marginal"] / pe["achievability-optimal — full"]
-    print(f"  G5 marginalization cost (P_exc ratio): single-threshold {c_cost:.3f}x, "
-          f"achievability {a_cost:.3f}x")
-    return save(fig, f"{PREFIX}_g5_marginalize.png")
-
-
 def main():
-    for fn in (g1_mc_spread, g2_prior_gap, g3_bounds_vs_exact, g4_fcurve_compare,
-               g5_marginalize):
+    for fn in (g1_mc_spread, g2_prior_gap, g3_bounds_vs_exact, g4_fcurve_compare):
         print(f"[{fn.__name__}]"); fn()
 
 
