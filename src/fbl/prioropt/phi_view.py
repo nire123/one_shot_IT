@@ -232,3 +232,31 @@ def J_typebased_rd(P_X, d, n, Q_type, M, kernel):
         J += float(delta[0])                            # offset (Phi(0)=1)
         J += float(np.sum(np.diff(delta) * phi(tau[:-1], M)))
     return J
+
+
+# JSCC (RCU+, list L=1): same clamped-parabola potential, but the threshold is
+# w0 = k_v^n / M (not e^{-R}); the prior is the conditional codeword-type law
+# Q_cond (one simplex per source-type block).  P_e = 1 - J.
+def phi_jscc_rcu(sigma, w0):
+    return np.where(sigma <= w0, sigma - sigma ** 2 / (2.0 * w0), 0.5 * w0)
+
+
+def dphi_jscc_rcu(sigma, w0):
+    return np.maximum(0.0, 1.0 - sigma / w0)
+
+
+def J_typebased_jscc(P_V, W, n, Q_cond, M):
+    """JSCC RCU+ success objective J = c^T Phi(A Q) on the conditional
+    codeword-type law (P_e = 1 - J).  Exact closed form of the bound that the
+    engine's achievable_bound integrates numerically."""
+    from fbl.prioropt.achievability_jscc import AchievabilityJSCC
+    aj = AchievabilityJSCC(np.asarray(P_V, float), np.asarray(W, float), n)
+    tbj = aj.tbj
+    w0 = aj.kv_n / float(M)
+    mass = np.asarray(Q_cond, float)[tbj._T_vx_idx] * tbj._ratio
+    J = 0.0
+    for (st, ed, order, nu_s, nu_next) in aj._blocks:
+        sigma = np.cumsum(mass[st + order])
+        c = nu_s - nu_next
+        J += float(np.sum(c * phi_jscc_rcu(sigma, w0)))
+    return J

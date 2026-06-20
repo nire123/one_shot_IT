@@ -17,7 +17,7 @@ import pytest
 
 from fbl.prioropt.phi_view import (
     preprocess_channel, preprocess_rd, J_formula, J_direct,
-    J_typebased_channel, J_typebased_rd,
+    J_typebased_channel, J_typebased_rd, J_typebased_jscc,
 )
 from fbl.channel_achievable_utils import kronecker_power
 from fbl.type_based_utils import memoryless_to_type_prior
@@ -141,6 +141,34 @@ def test_rd_typebased_matches_lifted(n, kernel):
         jl = J_formula(pre, M, kernel, "rd")
         assert abs(jt - jl) <= 1e-10 + 1e-9 * abs(jl), (
             f"n={n} {kernel} M={M}: type={jt:.8f} lifted={jl:.8f}")
+
+
+# ---- JSCC: P_e = 1 - c^T Phi(A Q) matches the engine's operational bound -------
+def test_jscc_typebased_matches_engine():
+    """The JSCC RCU+ bound P_e = 1 - J_typebased_jscc equals the engine's
+    achievable_bound (refined integration). My closed form is exact; the engine
+    integrates it numerically, so they agree to quadrature tolerance."""
+    from fbl.prioropt.achievability_jscc import AchievabilityJSCC
+    from fbl.F_curve import integrate_curve_jscc
+    PV = np.array([0.7, 0.3])
+    Wc = np.array([[0.9, 0.1], [0.2, 0.8]])
+    rng = np.random.default_rng(0)
+    for n in (1, 2, 3):
+        aj = AchievabilityJSCC(PV, Wc, n)
+        tbj = aj.tbj
+        M = aj.kv_n
+        priors = []
+        for kind in ("uniform", "random"):
+            Q = np.zeros(tbj._cond_vx.len)
+            for st, ed in tbj._cond_vx.iterate_cond():
+                Q[st:ed] = (1.0 / (ed - st) if kind == "uniform"
+                            else rng.dirichlet(np.ones(ed - st)))
+            priors.append(Q)
+        for Q in priors:
+            pe = 1.0 - J_typebased_jscc(PV, Wc, n, Q, M)
+            knots, vals = tbj.compute_f_curve(Q / aj.kv_n)
+            ref = integrate_curve_jscc(knots, vals, M, num_refined_points=200000)
+            assert abs(pe - ref) <= 1e-4 + 1e-3 * abs(ref), (n, pe, ref)
 
 
 # ------------ tie RD-exact to the trusted lifted one-shot path (= Monte-Carlo) --
