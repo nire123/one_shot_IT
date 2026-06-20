@@ -47,7 +47,7 @@ The **random-coding bound** is an integral of the spectrum against a *kernel*
 `κ` determined by the ensemble. With the antiderivative `Φ` defined by
 `Φ′ = 1 − ∫κ`, every bound in the library is
 
-$$ P \;=\; 1 \;-\; c^{\mathsf T}\,\Phi\!\big(A\cdot Q\big), $$
+$$ P = 1 - c^\top \Phi(A \cdot Q), $$
 
 where `A·Q = σ` are the cumulative staircase masses (**linear in the prior `Q`**)
 and `c` collects the non-negative metric gaps `νⱼ − νⱼ₊₁`. Two instances make
@@ -57,8 +57,8 @@ this concrete.
 
 The RCU⁺ kernel is `κ(w) = eᴿ·1{w ≤ w₀}`, giving the clamped parabola
 
-$$ \Phi(t) \;=\; t - \tfrac12 e^{R} t^2 \quad (t \le w_0),\qquad
-   \Phi(t) = \tfrac12 w_0 \ \ (t \ge w_0), $$
+$$ \Phi(t) = t - \frac{1}{2} e^{R} t^2 \quad (t \le w_0), \qquad
+   \Phi(t) = \frac{1}{2} w_0 \quad (t \ge w_0), $$
 
 and the achievable error `P_e = 1 − eᴿ·Γ` with
 `Γ = Σ (νⱼ−νⱼ₊₁)(w₀aⱼ − ½aⱼ²)` over clamped cumulative knots
@@ -70,7 +70,7 @@ and the achievable error `P_e = 1 − eᴿ·Γ` with
 For rate–distortion the best-of-`M` antiderivative is a genuine degree-`M`
 polynomial,
 
-$$ \Phi(t) \;=\; 1 - (1-t)^{M}, $$
+$$ \Phi(t) = 1 - (1-t)^{M}, $$
 
 and for list size `L` the JSCC kernel gives `Φ` of degree `L+1`. These have **no
 QP form**; the library brackets them (next section).
@@ -81,7 +81,7 @@ The meta-converse optimises the prior at a **single** threshold `w₀`. In the
 Φ-view this is the **Dirac kernel** `κ = δ(w − w₀)`, whose antiderivative is the
 **ramp**
 
-$$ \Phi(t) \;=\; \min(t, w_0). $$
+$$ \Phi(t) = \min(t, w_0). $$
 
 Because the ramp is piecewise-linear, the converse program is a **linear
 program** — exactly `TypeBasedChannel.optimize_prior` /
@@ -129,8 +129,8 @@ See `AchievabilityLP_RD.solve_bracketing_lp` and `AchievabilityQP.solve_bracketi
 The convex program can also be solved **directly on the simplex**, without cvxpy,
 for *any* kernel. The gradient of `Γ` is the analytic **water-fill** gradient
 
-$$ g(x) \;=\; \frac{\partial\Gamma}{\partial Q(x)}
-   \;=\; \sum_y \sum_{i \text{ fed by } x} \mathrm{ratio}_i \sum_{j\ge i} c_j\,\Phi'(\sigma_j), $$
+$$ g(x) = \frac{\partial \Gamma}{\partial Q(x)}
+   = \sum_y \sum_{i \text{ fed by } x} \mathrm{ratio}_i \sum_{j \ge i} c_j \Phi'(\sigma_j), $$
 
 and the directional derivative along a feasible move `μ` (with `Σμ = 0`) is
 `⟨g − ḡ, μ⟩` — only the *centred* gradient acts on the simplex. Optimality is the
@@ -163,7 +163,7 @@ so.
 **Excess distortion.** The excess probability of a size-`M` codebook is the
 best-of-`M` of the **indicator** distortion `d_e = 1{d > T}`:
 
-$$ P_\text{exc}(Q) \;=\; \sum_x P_X(x)\,\big(1 - q(x)\big)^{M},\qquad
+$$ P_\text{exc}(Q) = \sum_x P_X(x) (1 - q(x))^{M}, \qquad
    q(x) = Q_Y\{y : d(x,y) \le T\}. $$
 
 So excess optimisation *is* the average-distortion machinery applied to `d_e` —
