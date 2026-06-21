@@ -45,3 +45,15 @@ The distortion spectra of the two optimal priors are **nearly identical** — un
 channel coding (and excess distortion), reusing the converse prior for
 achievability costs almost nothing here: `D = 0.1551 → 0.1529` at `n=8` (~1.4 %),
 `0.1189 → 0.1186` at `n=20`. Average distortion is the prior-insensitive case.
+
+## G5 — full optimal prior vs its product (marginalized) version
+
+| `n=8` | `n=20` |
+|---|---|
+| ![G5 n8](../examples/figures/rd_avg_g5_full_vs_product_n8.png) | ![G5 n20](../examples/figures/rd_avg_g5_full_vs_product_n20.png) |
+
+Each optimal prior vs its i.i.d. product version, scored by the exact best-of-`M`
+distortion. **All four curves nearly coincide** — for average distortion the prior
+is insensitive, so the product (marginalized) version costs essentially nothing and
+the converse and achievability priors are interchangeable. This is the honest
+contrast to channel coding (where the converse-full curve sits far above).

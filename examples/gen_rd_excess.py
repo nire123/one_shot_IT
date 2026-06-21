@@ -179,8 +179,42 @@ def g4_fcurve_compare():
     return save(fig, f"{PREFIX}_g4_fcurve_compare.png")
 
 
+# ── G5 ─ full optimal prior vs its product (marginalized) version ─────────────
+def g5_full_vs_product():
+    """Each optimal reproduction prior (converse / achievable) vs its i.i.d.
+    product version, scored by the exact excess probability. Marginalizing the
+    converse prior helps; the achievable prior is barely changed."""
+    P_X, d_exc = _setup()
+    cover = (d_exc == 0).astype(float)
+    osr = OneShotRD(P_X, d_exc)
+    R_bits = np.linspace(0.3, 0.95, 9)
+    cf, cp_, af, ap = [], [], [], []
+    for Rb in R_bits:
+        M = float(np.exp(N * Rb * LN2))
+        _, Q_ach = _Pexc_opt(P_X, cover, M)
+        Q_conv, _ = osr.optimize_prior(M)
+        af.append(_pexc(P_X, cover, Q_ach, M))
+        ap.append(_pexc(P_X, cover, _marginal_iid_lifted(Q_ach, N), M))
+        cf.append(_pexc(P_X, cover, Q_conv, M))
+        cp_.append(_pexc(P_X, cover, _marginal_iid_lifted(Q_conv, N), M))
+    A = lambda v: np.array(v)
+    cf, cp_, af, ap = map(A, (cf, cp_, af, ap))
+
+    fig, ax = plt.subplots(figsize=(7.6, 4.8))
+    ax.semilogy(R_bits, cf, "s-", color="C3", label="converse-optimal — full")
+    ax.semilogy(R_bits, cp_, "v--", color="C3", label="converse-optimal — product")
+    ax.semilogy(R_bits, af, "o-", color="C1", label="achievability-optimal — full")
+    ax.semilogy(R_bits, ap, "^--", color="C1", label="achievability-optimal — product")
+    ax.set_xlabel("rate $R$ (bits/sym)"); ax.set_ylabel(r"achievable $P_{exc}$")
+    ax.set_title(f"G5  {TITLE}: full optimal prior vs its product version")
+    ax.legend(fontsize=8); ax.grid(True, which="both", alpha=0.3)
+    print(f"  G5: converse full/product (mid) {cf[len(cf)//2]/cp_[len(cp_)//2]:.2f}x")
+    return save(fig, f"{PREFIX}_g5_full_vs_product.png")
+
+
 def main():
-    for fn in (g1_mc_spread, g2_prior_gap, g3_bounds_vs_exact, g4_fcurve_compare):
+    for fn in (g1_mc_spread, g2_prior_gap, g3_bounds_vs_exact, g4_fcurve_compare,
+               g5_full_vs_product):
         print(f"[{fn.__name__}]"); fn()
 
 

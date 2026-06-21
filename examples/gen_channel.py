@@ -168,12 +168,50 @@ def g4_fcurve_compare(n):
     return save(fig, f"{PREFIX}_g4_fcurve_compare_n{n}.png")
 
 
+# ── G5 ─ full optimal prior vs its product (marginalized) version ─────────────
+def g5_full_vs_product(n):
+    """Take each optimal prior (converse / achievable) and its i.i.d. *product*
+    version (per-symbol marginal applied i.i.d.); show how the exact achievable
+    bound changes. The converse prior is poor for achievability (full) but its
+    product recovers most of it; the achievable prior is barely changed."""
+    tbc = TypeBasedChannel(W, n)
+    prog = ps.build_program("channel", W=W, n=n, kernel="exact")
+    R_bits = np.linspace(0.06, 0.85, 12)
+    cf, cp_, af, ap = [], [], [], []
+    warm = None
+    for Rb in R_bits:
+        M = float(np.exp(n * Rb * LN2))
+        res = ps.optimize(prog, M, method="pgd", max_iter=3000, tol=1e-7, warm_start=warm)
+        warm = res["Q"]
+        Q_ach, (Q_conv, _) = res["Q"], tbc.optimize_prior(M)
+        Q_ap = memoryless_to_type_prior(marginal_input(Q_ach, n, KX), n)
+        Q_cp = memoryless_to_type_prior(marginal_input(Q_conv, n, KX), n)
+        af.append(_pe_exact(tbc, n, Q_ach, M)); ap.append(_pe_exact(tbc, n, Q_ap, M))
+        cf.append(_pe_exact(tbc, n, Q_conv, M)); cp_.append(_pe_exact(tbc, n, Q_cp, M))
+    A = lambda v: np.array(v)
+    cf, cp_, af, ap = map(A, (cf, cp_, af, ap))
+
+    fig, ax = plt.subplots(figsize=(7.6, 4.8))
+    ax.semilogy(R_bits, cf, "s-", color="C3", label="converse-optimal — full")
+    ax.semilogy(R_bits, cp_, "v--", color="C3", label="converse-optimal — product")
+    ax.semilogy(R_bits, af, "o-", color="C1", label="achievability-optimal — full")
+    ax.semilogy(R_bits, ap, "^--", color="C1", label="achievability-optimal — product")
+    ax.set_xlabel("rate $R$ (bits/use)"); ax.set_ylabel(r"achievable $P_e$ (exact RC)")
+    ax.set_title(f"G5  {TITLE}, $n={n}$: full optimal prior vs its product version")
+    ax.legend(fontsize=8); ax.grid(True, which="both", alpha=0.3)
+    print(f"  G5 n={n}: converse full/product ratio (mid) "
+          f"{cf[len(cf)//2] / cp_[len(cp_)//2]:.1f}x, "
+          f"achiev {af[len(af)//2] / ap[len(ap)//2]:.3f}x")
+    return save(fig, f"{PREFIX}_g5_full_vs_product_n{n}.png")
+
+
 def main():
     print("[g1]"); g1_mc_spread(8)
     for n in (8, 20):
         print(f"[g2 n={n}]"); g2_prior_gap(n)
         print(f"[g3 n={n}]"); g3_bounds_vs_exact(n)
         print(f"[g4 n={n}]"); g4_fcurve_compare(n)
+        print(f"[g5 n={n}]"); g5_full_vs_product(n)
 
 
 if __name__ == "__main__":
