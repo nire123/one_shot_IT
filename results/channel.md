@@ -85,8 +85,10 @@ is already nearly i.i.d., so the non-product structure is worth only a few perce
 The complementary view to G1–G5: **fix the error probability `ε=10⁻³` and plot the
 rate vs blocklength.** The **converse** (max rate at which the meta-converse floor
 is `≤ε`) and the **achievable** (max rate at which the Φ-march bound is `≤ε`)
-bracket the true `ε`-capacity and both rise toward capacity `C=0.763`. Each point
-is a bisection on `R` (the bound is monotone in rate); the converse uses the LP
-value (unique, unlike the prior), the achievable uses a warm-started march. At
-these small `n` the achievable is conservative — at `ε=10⁻³` you can barely add a
-second codeword until `n≈12` — which is the genuine finite-blocklength regime.
+bracket the true `ε`-capacity and both rise toward capacity `C=0.763`. The
+**converse point is a single LP** — `TypeBasedChannel.converse_rate_at_eps(ε)`
+inverts the meta-converse directly for `w=e^{-R}` (`min w` s.t. success `≥ 1-ε`),
+no rate sweep — exact and ~20× faster than bisecting. The achievable point is a
+bisection on the warm-started march (the bound is monotone in `R`). At these small
+`n` the achievable is conservative — at `ε=10⁻³` you can barely add a second
+codeword until `n≈12` — which is the genuine finite-blocklength regime.

@@ -245,9 +245,8 @@ def rate_vs_n(eps=1e-3, n_list=(4, 6, 8, 10, 12, 14, 16, 18, 20, 22)):
             return 1.0 - res["J"]
 
         tbc = TypeBasedChannel(W, n)
-        err_conv = lambda Rb: tbc.optimize_prior(float(np.exp(n * Rb * LN2)))[1]
         R_ach.append(_rate_at_eps(err_ach, eps, R_hi))
-        R_conv.append(_rate_at_eps(err_conv, eps, R_hi))
+        R_conv.append(tbc.converse_rate_at_eps(eps) / LN2)   # single LP, exact
         print(f"  n={n}: R_ach={R_ach[-1]:.4f}  R_conv={R_conv[-1]:.4f}  (C={C:.4f})",
               flush=True)
 

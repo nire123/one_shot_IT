@@ -173,6 +173,21 @@ def test_lp_n1_suite():
         _check_optimize_prior_n1(W, label=label)
 
 
+def test_converse_rate_at_eps_single_lp():
+    """The single-LP converse rate inversion (min w s.t. success >= 1-eps) must
+    match a bisection that solves the fixed-M converse LP per step."""
+    eps, ln2 = 1e-3, np.log(2.0)
+    for n in (6, 10):
+        tbc = TypeBasedChannel(z_channel(0.1), n)
+        r_lp = tbc.converse_rate_at_eps(eps) / ln2              # bits/sym
+        lo, hi = 0.0, 1.2
+        for _ in range(24):                                    # bisection reference
+            mid = 0.5 * (lo + hi)
+            err = tbc.optimize_prior(float(np.exp(n * mid * ln2)))[1]
+            lo, hi = (mid, hi) if err <= eps else (lo, mid)
+        assert abs(r_lp - lo) <= 1e-4, f"n={n}: single-LP {r_lp} vs bisection {lo}"
+
+
 def test_lp_n_gt1_suite():
     print("\n=== LP at n>1: type-based >= one-shot ===")
     channels = [

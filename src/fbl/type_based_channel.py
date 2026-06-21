@@ -115,6 +115,38 @@ class TypeBasedChannel(TypeBasedBase):
             return None, None
         return self._core.Q_values.copy(), float(error)
 
+    def converse_rate_at_eps(self, eps):
+        """
+        Largest rate at which the meta-converse error lower bound is <= eps,
+        as a SINGLE LP (no rate bisection).
+
+        Inverting the converse: the converse error at threshold ``w = e^{-R}`` is
+        ``1 - max_{Q,V} sum_r V_r alpha_r``.  Parametrising by the un-normalised
+        reverse-channel mass ``V`` (= R-vars times w) makes the caps linear, so the
+        whole inversion is one LP::
+
+            min_{w,Q,V} w   s.t.   sum_r V_r alpha_r >= 1 - eps,
+                                   V_r <= Q[T_X(r)] * ratio_r,
+                                   sum_{r in y-block} V_r <= w,
+                                   sum_x Q_x = 1,  V,Q,w >= 0.
+
+        Returns the **per-symbol** rate in nats, ``R = -log(w*) / n`` (the total
+        threshold is ``w* = e^{-nR}``).
+        """
+        import cvxpy as cp
+        c = self._core
+        V = cp.Variable(c.num_R, nonneg=True)
+        Q = cp.Variable(c.num_q, nonneg=True)
+        w = cp.Variable(nonneg=True)
+        cons = [cp.sum(cp.multiply(V, c.alpha_coeffs)) >= 1.0 - eps,
+                V <= cp.multiply(Q[c.R_to_Q], c.R_Q_ratio),
+                cp.sum(Q) == 1.0]
+        for st, ed in c.cond_y_x.iterate_cond():
+            cons.append(cp.sum(V[st:ed]) <= w)
+        prob = cp.Problem(cp.Minimize(w), cons)
+        prob.solve(solver=cp.SCIPY, scipy_options={"method": "highs-ds"})
+        return -np.log(float(w.value)) / self.n
+
     # ── convenience ───────────────────────────────────────────────────────────
 
     def prior_to_one_shot(self, P_T_X):
