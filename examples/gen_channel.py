@@ -6,6 +6,8 @@ Channel coding -- results for the pinned case  Z(0.1).
       marginal-memoryless (achievable / converse)            -- the centerpiece
   G3  exact random-coding error vs the union-bound surrogate
   G4  error spectrum: achievability-optimal vs converse-optimal prior
+  G5  optimal achievable prior vs its i.i.d. product (marginalization cost)
+  rate_vs_n  fix the error eps; achievable & converse rate vs blocklength
 
 The achievability-optimal prior is the Phi-view simplex march (KKT/FW-gap
 certified); the headline bound is the EXACT random-coding kernel
@@ -203,6 +205,62 @@ def g5_full_vs_product(n):
     return save(fig, f"{PREFIX}_g5_full_vs_product_n{n}.png")
 
 
+# ── rate vs blocklength at fixed error ────────────────────────────────────────
+def _capacity_bits():
+    """Capacity of W (bits/use) = max_q I(X;Y), 1-D search over q = P(X=1)."""
+    best = 0.0
+    for q in np.linspace(1e-4, 1 - 1e-4, 400):
+        Px = np.array([1 - q, q]); Py = Px @ W
+        I = sum(Px[x] * W[x, y] * np.log2(W[x, y] / Py[y])
+                for x in range(2) for y in range(2) if W[x, y] > 0 and Py[y] > 0)
+        best = max(best, I)
+    return best
+
+
+def _rate_at_eps(err_of_Rb, eps, R_hi, iters=16):
+    """Largest rate (bits) with err <= eps, by bisection (err monotone in rate)."""
+    lo, hi = 0.0, R_hi
+    if err_of_Rb(hi) <= eps:
+        return hi
+    for _ in range(iters):
+        mid = 0.5 * (lo + hi)
+        lo, hi = (mid, hi) if err_of_Rb(mid) <= eps else (lo, mid)
+    return lo
+
+
+def rate_vs_n(eps=1e-3, n_list=(4, 6, 8, 10, 12, 14, 16, 18, 20, 22)):
+    """Fix the error probability eps; plot achievable (Phi-march) and converse
+    (meta-converse LP) rate vs blocklength, converging toward capacity."""
+    C = _capacity_bits()
+    R_hi = C + 0.35
+    R_ach, R_conv = [], []
+    for n in n_list:
+        prog = ps.build_program("channel", W=W, n=n, kernel="exact")
+        warm = {"Q": None}
+
+        def err_ach(Rb):
+            res = ps.optimize(prog, float(np.exp(n * Rb * LN2)), method="pgd",
+                              max_iter=2500, tol=1e-7, warm_start=warm["Q"])
+            warm["Q"] = res["Q"]
+            return 1.0 - res["J"]
+
+        tbc = TypeBasedChannel(W, n)
+        err_conv = lambda Rb: tbc.optimize_prior(float(np.exp(n * Rb * LN2)))[1]
+        R_ach.append(_rate_at_eps(err_ach, eps, R_hi))
+        R_conv.append(_rate_at_eps(err_conv, eps, R_hi))
+        print(f"  n={n}: R_ach={R_ach[-1]:.4f}  R_conv={R_conv[-1]:.4f}  (C={C:.4f})",
+              flush=True)
+
+    fig, ax = plt.subplots(figsize=(7.6, 4.8))
+    ax.axhline(C, color="k", ls=":", lw=1.3, label=f"capacity $C={C:.3f}$")
+    ax.plot(n_list, R_conv, "^-", color="C0", label=r"converse (max rate at $P_e=\epsilon$)")
+    ax.plot(n_list, R_ach, "s-", color="C1", label=r"achievable ($\Phi$-march at $P_e=\epsilon$)")
+    ax.set_xlabel("blocklength $n$"); ax.set_ylabel("rate $R$ (bits/use)")
+    ax.set_title(f"{TITLE}: rate vs blocklength at fixed $P_e=\\epsilon={eps:g}$")
+    ax.legend(fontsize=9); ax.grid(True, alpha=0.3)
+    return save(fig, f"{PREFIX}_rate_vs_n.png")
+
+
 def main():
     print("[g1]"); g1_mc_spread(8)
     for n in (8, 20):
@@ -210,6 +268,7 @@ def main():
         print(f"[g3 n={n}]"); g3_bounds_vs_exact(n)
         print(f"[g4 n={n}]"); g4_fcurve_compare(n)
         print(f"[g5 n={n}]"); g5_full_vs_product(n)
+    print("[rate_vs_n]"); rate_vs_n(eps=1e-3)
 
 
 if __name__ == "__main__":

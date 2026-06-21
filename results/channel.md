@@ -77,3 +77,16 @@ is already nearly i.i.d., so the non-product structure is worth only a few perce
 > so "the" converse prior — and its achievable bound — is solver-dependent there
 > and reusing it for the whole-spectrum integral is ill-posed. The achievable prior
 > is unique and KKT-certified, so this comparison is well-defined.
+
+## Rate vs blocklength at fixed error
+
+![rate vs n](../examples/figures/channel_rate_vs_n.png)
+
+The complementary view to G1–G5: **fix the error probability `ε=10⁻³` and plot the
+rate vs blocklength.** The **converse** (max rate at which the meta-converse floor
+is `≤ε`) and the **achievable** (max rate at which the Φ-march bound is `≤ε`)
+bracket the true `ε`-capacity and both rise toward capacity `C=0.763`. Each point
+is a bisection on `R` (the bound is monotone in rate); the converse uses the LP
+value (unique, unlike the prior), the achievable uses a warm-started march. At
+these small `n` the achievable is conservative — at `ε=10⁻³` you can barely add a
+second codeword until `n≈12` — which is the genuine finite-blocklength regime.
