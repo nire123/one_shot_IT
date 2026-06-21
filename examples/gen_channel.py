@@ -168,40 +168,38 @@ def g4_fcurve_compare(n):
     return save(fig, f"{PREFIX}_g4_fcurve_compare_n{n}.png")
 
 
-# ── G5 ─ full optimal prior vs its product (marginalized) version ─────────────
+# ── G5 ─ optimal achievable prior: full vs its i.i.d. product ─────────────────
 def g5_full_vs_product(n):
-    """Take each optimal prior (converse / achievable) and its i.i.d. *product*
-    version (per-symbol marginal applied i.i.d.); show how the exact achievable
-    bound changes. The converse prior is poor for achievability (full) but its
-    product recovers most of it; the achievable prior is barely changed."""
+    """How the exact achievable bound changes when the (well-defined,
+    KKT-certified) optimal achievable prior is replaced by its i.i.d. *product*
+    version (per-symbol marginal applied i.i.d.). Left: the two bounds; right: the
+    marginalization cost. (The converse prior is omitted here: its single-threshold
+    optimum is non-unique where the converse is slack, so reusing it for the
+    achievability integral is ill-defined.)"""
     tbc = TypeBasedChannel(W, n)
     prog = ps.build_program("channel", W=W, n=n, kernel="exact")
     R_bits = np.linspace(0.06, 0.85, 12)
-    cf, cp_, af, ap = [], [], [], []
+    af, ap = [], []
     warm = None
     for Rb in R_bits:
         M = float(np.exp(n * Rb * LN2))
         res = ps.optimize(prog, M, method="pgd", max_iter=3000, tol=1e-7, warm_start=warm)
         warm = res["Q"]
-        Q_ach, (Q_conv, _) = res["Q"], tbc.optimize_prior(M)
-        Q_ap = memoryless_to_type_prior(marginal_input(Q_ach, n, KX), n)
-        Q_cp = memoryless_to_type_prior(marginal_input(Q_conv, n, KX), n)
-        af.append(_pe_exact(tbc, n, Q_ach, M)); ap.append(_pe_exact(tbc, n, Q_ap, M))
-        cf.append(_pe_exact(tbc, n, Q_conv, M)); cp_.append(_pe_exact(tbc, n, Q_cp, M))
-    A = lambda v: np.array(v)
-    cf, cp_, af, ap = map(A, (cf, cp_, af, ap))
+        Q_ap = memoryless_to_type_prior(marginal_input(res["Q"], n, KX), n)
+        af.append(1.0 - res["J"]); ap.append(_pe_exact(tbc, n, Q_ap, M))
+    af, ap = np.array(af), np.array(ap)
+    cost = (ap - af) / af * 100.0
 
-    fig, ax = plt.subplots(figsize=(7.6, 4.8))
-    ax.semilogy(R_bits, cf, "s-", color="C3", label="converse-optimal — full")
-    ax.semilogy(R_bits, cp_, "v--", color="C3", label="converse-optimal — product")
-    ax.semilogy(R_bits, af, "o-", color="C1", label="achievability-optimal — full")
-    ax.semilogy(R_bits, ap, "^--", color="C1", label="achievability-optimal — product")
+    fig, (ax, ax2) = plt.subplots(1, 2, figsize=(11.4, 4.4))
+    ax.semilogy(R_bits, af, "o-", color="C1", label="optimal achievable prior (full)")
+    ax.semilogy(R_bits, ap, "^--", color="C2", label="its i.i.d. product (marginalized)")
     ax.set_xlabel("rate $R$ (bits/use)"); ax.set_ylabel(r"achievable $P_e$ (exact RC)")
-    ax.set_title(f"G5  {TITLE}, $n={n}$: full optimal prior vs its product version")
+    ax.set_title(f"G5  {TITLE}, $n={n}$: optimal prior vs its product")
     ax.legend(fontsize=8); ax.grid(True, which="both", alpha=0.3)
-    print(f"  G5 n={n}: converse full/product ratio (mid) "
-          f"{cf[len(cf)//2] / cp_[len(cp_)//2]:.1f}x, "
-          f"achiev {af[len(af)//2] / ap[len(ap)//2]:.3f}x")
+    ax2.plot(R_bits, cost, "s-", color="C1")
+    ax2.set_xlabel("rate $R$ (bits/use)"); ax2.set_ylabel("marginalization cost (%)")
+    ax2.set_title("cost of the i.i.d. product"); ax2.grid(True, alpha=0.3)
+    print(f"  G5 n={n}: max marginalization cost {cost.max():.2f}%")
     return save(fig, f"{PREFIX}_g5_full_vs_product_n{n}.png")
 
 

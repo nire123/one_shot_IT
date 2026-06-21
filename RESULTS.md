@@ -5,9 +5,9 @@ Each use case is pinned to a single channel/source and shown as five figures —
 centerpiece: optimal achievable prior vs optimal memoryless vs the two
 *marginal-memoryless* priors), **G3** exact random coding vs a closed-form
 surrogate, **G4** the error/distortion spectrum of the converse- vs
-achievability-optimal prior, and **G5** each optimal prior (converse /
-achievable) vs its i.i.d. **product** (marginalized) version, showing how the
-achievable bound changes.
+achievability-optimal prior, and **G5** the optimal achievable prior vs its
+i.i.d. **product** (marginalized) version, showing the marginalization cost
+(how much the achievable bound changes).
 
 The achievability-optimal prior is computed by the **Φ-view simplex march**
 (KKT / Frank–Wolfe-gap certified — an intrinsic optimality proof), scored with the

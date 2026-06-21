@@ -59,17 +59,21 @@ achievability bound integrates, so **reused for achievability it is far worse**:
 The penalty grows with `n` — the concrete reason the converse and achievability
 prior optimizations are genuinely different problems.
 
-## G5 — full optimal prior vs its product (marginalized) version
+## G5 — optimal prior vs its i.i.d. product (marginalization cost)
 
 | `n=8` | `n=20` |
 |---|---|
 | ![G5 n8](../examples/figures/channel_g5_full_vs_product_n8.png) | ![G5 n20](../examples/figures/channel_g5_full_vs_product_n20.png) |
 
-Take each optimal prior (converse / achievability) and replace it by its **product
-version** — the per-symbol marginal applied i.i.d. — and see how the *exact
-achievable* bound changes. The **converse-optimal prior is poor for achievability**
-(the full red curve humps far above the rest at low rate), but its **product
-version collapses onto the achievability optimum** — marginalization discards the
-single-threshold structure and rescues it. The **achievability-optimal prior is
-essentially unchanged** by marginalization (its full and product curves coincide):
-at these `n` the optimum is already nearly i.i.d.
+Replace the (KKT-certified) optimal achievable prior by its **product version** —
+the per-symbol marginal applied i.i.d. — and see how the exact achievable bound
+changes. Left: the two bounds nearly coincide; right: the **marginalization cost**
+peaks at **≈3.5 % at low rate** (`n=20`) and decays to ~0 at high rate — the optimum
+is already nearly i.i.d., so the non-product structure is worth only a few percent
+(the constant-composition corner).
+
+> The converse prior is intentionally omitted here: its single-threshold optimum is
+> **non-unique** where the converse program is slack (low/mid rate, LP value ≈ 0),
+> so "the" converse prior — and its achievable bound — is solver-dependent there
+> and reusing it for the whole-spectrum integral is ill-posed. The achievable prior
+> is unique and KKT-certified, so this comparison is well-defined.

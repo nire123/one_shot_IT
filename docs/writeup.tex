@@ -148,10 +148,13 @@ against Monte-Carlo at small $n$; \textbf{G2} is the prior gap (optimal achievab
 prior vs.\ optimal memoryless vs.\ the two marginal-memoryless priors); \textbf{G3}
 compares exact random coding to a closed-form surrogate; \textbf{G4} contrasts the
 error/distortion spectra of the converse- and achievability-optimal priors; and
-\textbf{G5} replaces each optimal prior by its i.i.d.\ \emph{product} (marginalized)
-version and shows how the achievable bound changes. The achievability-optimal prior
-is the KKT-certified march; the bound is the exact random-coding kernel. G1 stays at
-$n=8$; G2--G5 are shown at $n=8$ and $n=20$.
+\textbf{G5} replaces the (KKT-certified) optimal achievable prior by its i.i.d.\
+\emph{product} (marginalized) version and shows the marginalization cost. The
+achievability-optimal prior is the KKT-certified march; the bound is the exact
+random-coding kernel. G1 stays at $n=8$; G2--G5 are shown at $n=8$ and $n=20$.
+(The converse prior is omitted from G5: its single-threshold optimum is non-unique
+where the converse is slack, so reusing it for the whole-spectrum integral is
+ill-posed.)
 
 \subsection{Channel coding --- $Z(0.1)$}
 The non-product prior gain peaks at low rate and grows with $n$
@@ -180,9 +183,9 @@ prior over the best memoryless prior.}
 \begin{figure}[H]\centering
 \begin{subfigure}{0.49\textwidth}\includegraphics[width=\linewidth]{channel_g5_full_vs_product_n8.png}\caption{$n=8$}\end{subfigure}\hfill
 \begin{subfigure}{0.49\textwidth}\includegraphics[width=\linewidth]{channel_g5_full_vs_product_n20.png}\caption{$n=20$}\end{subfigure}
-\caption{G5 --- each optimal prior vs.\ its i.i.d.\ \emph{product} (marginalized)
-version. The converse-optimal prior (red, full) is poor for achievability but its
-product collapses onto the optimum; the achievability-optimal prior is unchanged.}
+\caption{G5 --- the optimal achievable prior vs.\ its i.i.d.\ \emph{product}
+(marginalized) version (left), and the marginalization cost (right): $\approx3.5\%$
+at low rate, $\to 0$ at high rate. The optimum is nearly i.i.d.}
 \end{figure}
 
 \subsection{Rate--distortion, average --- BMS$(0.25)$ + Hamming}
@@ -211,8 +214,8 @@ The gain over the best memoryless prior is $\approx5.4\%$ ($n=8$) / $5.9\%$
 \begin{figure}[H]\centering
 \begin{subfigure}{0.49\textwidth}\includegraphics[width=\linewidth]{rd_avg_g5_full_vs_product_n8.png}\caption{$n=8$}\end{subfigure}\hfill
 \begin{subfigure}{0.49\textwidth}\includegraphics[width=\linewidth]{rd_avg_g5_full_vs_product_n20.png}\caption{$n=20$}\end{subfigure}
-\caption{G5 --- full vs.\ product prior. All four curves coincide: average
-distortion is prior-insensitive.}
+\caption{G5 --- optimal achievable prior vs.\ its i.i.d.\ product: the
+marginalization cost is $\approx6.5\%$; the optimum is still essentially i.i.d.}
 \end{figure}
 
 \subsection{Rate--distortion, excess --- BMS$(0.25)$, $T=1$, $n=6$}
@@ -229,10 +232,10 @@ $n=6$. The gain peaks at $\approx7\%$; reusing the converse prior costs $2.8\tim
 (G3), and the excess spectra (G4); the converse-marginal prior is the worst here.}
 \end{figure}
 \begin{figure}[H]\centering
-\includegraphics[width=0.62\textwidth]{rd_exc_g5_full_vs_product.png}
-\caption{G5 --- full vs.\ product prior. The converse pair sits $\approx2.8\times$
-above the achievable pair, and---unlike channel coding---marginalizing the converse
-prior does \emph{not} rescue it (full and product overlap).}
+\includegraphics[width=\textwidth]{rd_exc_g5_full_vs_product.png}
+\caption{G5 --- optimal achievable prior vs.\ its i.i.d.\ product: the
+marginalization cost is $\approx8.6\%$ (largest of the three, a probability being
+more prior-sensitive), but the optimum is still close to i.i.d.}
 \end{figure}
 
 \subsection{JSCC --- BMS$(0.07)$ over BSC$(0.05)$, $H<C$}

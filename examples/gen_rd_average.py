@@ -159,37 +159,34 @@ def g4_fcurve_compare(n):
     return save(fig, f"{PREFIX}_g4_fcurve_compare_n{n}.png")
 
 
-# ── G5 ─ full optimal prior vs its product (marginalized) version ─────────────
+# ── G5 ─ optimal achievable prior: full vs its i.i.d. product ─────────────────
 def g5_full_vs_product(n):
-    """Each optimal prior (converse / achievable) vs its i.i.d. product version,
-    scored by the exact best-of-M distortion. For average distortion the prior is
-    insensitive, so all four nearly coincide (the honest contrast to channel)."""
-    tbr = TypeBasedRD(P_X1, D_SINGLE, n)
+    """How the exact best-of-M distortion changes when the KKT-optimal achievable
+    reproduction prior is replaced by its i.i.d. product version. Left: the two
+    distortions; right: the marginalization cost."""
     prog = ps.build_program("rd", P_X=P_X1, d=D_SINGLE, n=n, kernel="exact")
     R_bits = np.linspace(0.15, 0.8, 12)
-    cf, cp_, af, ap = [], [], [], []
+    af, ap = [], []
     warm = None
     for Rb in R_bits:
         M = float(np.exp(n * Rb * LN2))
         res = ps.optimize(prog, M, method="pgd", max_iter=3000, tol=1e-8, warm_start=warm)
         warm = res["Q"]
-        Q_ach, (Q_conv, _) = res["Q"], tbr.optimize_prior(M)
-        Q_ap = memoryless_to_type_prior(marginal_input(Q_ach, n, KY), n)
-        Q_cp = memoryless_to_type_prior(marginal_input(Q_conv, n, KY), n)
+        Q_ap = memoryless_to_type_prior(marginal_input(res["Q"], n, KY), n)
         af.append(res["J"] / n); ap.append(_d_exact(n, Q_ap, M))
-        cf.append(_d_exact(n, Q_conv, M)); cp_.append(_d_exact(n, Q_cp, M))
-    A = lambda v: np.array(v)
-    cf, cp_, af, ap = map(A, (cf, cp_, af, ap))
+    af, ap = np.array(af), np.array(ap)
+    cost = (ap - af) / af * 100.0
 
-    fig, ax = plt.subplots(figsize=(7.6, 4.8))
-    ax.plot(R_bits, cf, "s-", color="C3", label="converse-optimal — full")
-    ax.plot(R_bits, cp_, "v--", color="C3", label="converse-optimal — product")
-    ax.plot(R_bits, af, "o-", color="C1", label="achievability-optimal — full")
-    ax.plot(R_bits, ap, "^--", color="C1", label="achievability-optimal — product")
+    fig, (ax, ax2) = plt.subplots(1, 2, figsize=(11.4, 4.4))
+    ax.plot(R_bits, af, "o-", color="C1", label="optimal achievable prior (full)")
+    ax.plot(R_bits, ap, "^--", color="C2", label="its i.i.d. product (marginalized)")
     ax.set_xlabel("rate $R$ (bits/sym)"); ax.set_ylabel("achievable distortion / symbol")
-    ax.set_title(f"G5  {TITLE}, $n={n}$: full optimal prior vs its product version")
+    ax.set_title(f"G5  {TITLE}, $n={n}$: optimal prior vs its product")
     ax.legend(fontsize=8); ax.grid(True, alpha=0.3)
-    print(f"  G5 n={n}: converse full/product (mid) {cf[len(cf)//2]/cp_[len(cp_)//2]:.3f}x")
+    ax2.plot(R_bits, cost, "s-", color="C1")
+    ax2.set_xlabel("rate $R$ (bits/sym)"); ax2.set_ylabel("marginalization cost (%)")
+    ax2.set_title("cost of the i.i.d. product"); ax2.grid(True, alpha=0.3)
+    print(f"  G5 n={n}: max marginalization cost {cost.max():.2f}%")
     return save(fig, f"{PREFIX}_g5_full_vs_product_n{n}.png")
 
 

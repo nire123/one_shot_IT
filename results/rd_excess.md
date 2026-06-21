@@ -42,13 +42,12 @@ achievability-optimal one. Reused for achievability, the converse prior gives
 (and unlike average distortion), the converse and achievability priors are
 genuinely different for excess distortion.
 
-## G5 — full optimal prior vs its product (marginalized) version
+## G5 — optimal prior vs its i.i.d. product (marginalization cost)
 
 ![G5](../examples/figures/rd_exc_g5_full_vs_product.png)
 
-Each optimal prior vs its i.i.d. product version, on the exact excess probability.
-The **converse pair sits ~2.8× above the achievable pair** across rates — and,
-unlike channel coding, **marginalizing the converse prior does *not* rescue it**
-(its full and product curves overlap). Excess distortion is the case where the
-converse prior is a poor achievability prior even after marginalization; the
-achievability-optimal prior, full or product, stays at the bottom.
+The optimal achievable reproduction prior vs its i.i.d. product version, on the
+exact excess probability. The marginalization cost is **≈8.6 %** — the largest of
+the three use cases (a probability is more prior-sensitive than a mean), but the
+product is still close: even for excess the optimum is nearly i.i.d. The
+prior-*family* gap (which prior) is the bigger effect for excess — see G2/G4.
