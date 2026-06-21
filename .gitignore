@@ -9,3 +9,12 @@ _*.out
 _fiximports*.py
 .venv/
 venv/
+
+# LaTeX build artifacts (keep the .tex and .pdf)
+*.aux
+*.log
+*.out
+*.toc
+*.synctex.gz
+*.fls
+*.fdb_latexmk

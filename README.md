@@ -69,6 +69,9 @@ The repo is meant to be read top to bottom on its GitHub page:
 - [`docs/API.md`](docs/API.md) — every public class and method.
 - [`docs/TESTING.md`](docs/TESTING.md) — what each cross-check guarantees.
 - [`RESULTS.md`](RESULTS.md) + [`results/`](results/) — figures and headline numbers.
+- [`docs/writeup.pdf`](docs/writeup.pdf) ([source](docs/writeup.tex)) — a standalone
+  write-up: theory + method + **all plots** in one self-contained PDF
+  (`pdflatex docs/writeup.tex`).
 
 ## Layout
 
