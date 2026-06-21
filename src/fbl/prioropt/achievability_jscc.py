@@ -33,7 +33,6 @@ converse LP exactly -- a built-in normalization sanity check (K=1).
 For general list L the kernel antiderivative Phi_L has degree L+1 -> bracketing
 LP (secant/tangent); provided here too via solve_bracketing_lp.
 """
-import sys, os
 import numpy as np
 import cvxpy as cp
 
@@ -174,7 +173,6 @@ class AchievabilityJSCC:
                         cons.append(t[j] <= phi_g[k] + sec_slope[k] * (a[j] - grid[k]))
                 else:
                     # tangents at grid points (>=Phi): t <= phi_g[k] + phi'(grid[k])(a-grid[k])
-                    gpk = 1.0 - np.power(min(grid[k], w0) / w0, L)
                     for k in range(K + 1):
                         gpk = 1.0 - np.power(grid[k] / w0, L)
                         cons.append(t[j] <= phi_g[k] + gpk * (a[j] - grid[k]))

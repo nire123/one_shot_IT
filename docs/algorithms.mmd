@@ -15,7 +15,7 @@ flowchart TB
 
   subgraph CONVERSE[" CONVERSE "]
     direction TB
-    K1["kernel = Dirac &nbsp;δ(w−w₀)"]:::conv --> F1["Φ(t) = min(t, w₀) &nbsp;(ramp)"]:::conv --> R1["piecewise-linear ⇒ LP"]:::conv --> S1["meta-converse LP<br/>optimize_prior · compute_converse<br/>TypeBasedBlockLP(RD)"]:::conv
+    K1["kernel = Dirac &nbsp;δ(w−w₀)"]:::conv --> F1["Φ(t) = min(t, w₀) &nbsp;(ramp)"]:::conv --> R1["piecewise-linear ⇒ LP"]:::conv --> S1["meta-converse LP<br/>optimize_prior · compute_converse"]:::conv
   end
 
   subgraph ACHA[" ACHIEVABILITY · RCU⁺ (list L=1) "]

@@ -50,10 +50,11 @@ so the suite is **not flaky**; there are no `skip`/`xfail` markers.
 - **Dirac program ≡ meta-converse LP** — running the achievability skeleton with
   the ramp kernel reproduces the converse value.
   `::test_jscc_dirac_equals_converse`.
-- **Unified-view consistency** — the `DirectPriorOpt` water-fill gradient matches
-  a finite-difference directional derivative, and its RCU⁺ optimum matches the QP;
-  the converse (Dirac) program is zero below capacity.
-  `test_direct_program.py`.
+- **March optimality** — the `phi_simplex` water-fill gradient matches a
+  finite-difference directional derivative; its optimum matches the exact QP
+  (channel/JSCC) and lands inside the RD bracket; and the **KKT certificate** holds
+  at the optimum but is rejected at a non-optimal prior (negative control).
+  `test_phi_simplex.py`.
 
 ## Tolerances — how to read a pass
 

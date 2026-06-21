@@ -14,10 +14,6 @@ Per source-type block (tb.cond_x_y.iterate_cond()):
 Abel form (delta ascending so delta_j-delta_{j+1} <= 0):
     D = sum_block [ sum_{j<m} (delta_j-delta_{j+1}) Phi(sigma_j) + delta_m ],  minimized.
 """
-import os
-import sys
-
-
 import numpy as np
 import cvxpy as cp
 

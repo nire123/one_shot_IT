@@ -63,7 +63,8 @@ $$ \Phi(t) = t - \frac{1}{2} e^{R} t^2 \quad (t \le w_0), \qquad
 and the achievable error `P_e = 1 − eᴿ·Γ` with
 `Γ = Σ (νⱼ−νⱼ₊₁)(w₀aⱼ − ½aⱼ²)` over clamped cumulative knots
 `aⱼ ≤ aⱼ₋₁ + massⱼ`, `aⱼ ≤ w₀`
-(`AchievabilityQP.solve_rcu_plus`, `direct_program.py`).
+(`AchievabilityQP.solve_rcu_plus`; the same program is solved by the
+`phi_simplex` march).
 
 ### 2.2 Achievability — general kernel (rate–distortion, excess, list `L`)
 
@@ -184,9 +185,9 @@ prior gain is essentially **nil** — a declared null result.
 Because converse and achievability optimise *different* functionals of the same
 spectrum (one threshold vs. the whole integral), the **converse-optimal prior
 reused for achievability** can be far from optimal. The library measures this
-penalty exactly (see [`../RESULTS.md`](../RESULTS.md)): **8.5×** worse for channel
-Z(0.1), **2.8×** for excess distortion, but ~1% for average distortion and null
-for i.i.d. JSCC. Replacing the common heuristic "reuse the converse prior" with
+penalty exactly (see [`../RESULTS.md`](../RESULTS.md)): **5× (n=8) → 15× (n=20)**
+worse for channel Z(0.1), **2.8×** for excess distortion, but ~1% for average
+distortion and null for i.i.d. JSCC. Replacing the common heuristic "reuse the converse prior" with
 the exact achievability program is the practical payoff.
 
 ---
@@ -217,8 +218,9 @@ each type class, so the marginal at every coordinate is identical. Note this is 
 *re-optimizes* a single-letter prior); marginalization simply **projects** the
 `n`-letter optimum down to one symbol.
 
-The `G5` figures (see [`../RESULTS.md`](../RESULTS.md)) measure its cost and find
-two things. (1) The marginal of the **achievability-optimal** prior is itself
+The **G2** figures (see [`../RESULTS.md`](../RESULTS.md)) include these
+marginal-memoryless priors and measure their cost, finding two things. (1) The
+marginal of the **achievability-optimal** prior is itself
 near-optimal — a few percent — because at these blocklengths the optimum is
 already close to i.i.d. (the constant-composition gain is a large-`n` corner). (2)
 The **converse-optimal** prior, which is far too weak when *reused directly* for

@@ -4,8 +4,9 @@ Exact achievability prior optimization: convex QP (RCU+) and bracketing LP.
 ADDITIVE module. Imports the existing TypeBasedChannel machinery unchanged and
 builds, on the same type data, the exact convex quadratic program of
 `thm:qp` (Appendix F of the PEP-framework paper) and the general-kernel
-bracketing LP of `prop:pwl-lp`. This replaces the *approximate* kink-adaptive
-chord-rule `TypeBasedBlockLP` with the *exact* program.
+bracketing LP of `prop:pwl-lp`. The QP is the quadratic-Phi special case of the
+unified Phi-view; it is retained as an exact validation anchor for the
+`phi_simplex` march and as a staircase (`_blocks`) builder.
 
 Structural map (paper single-letter  ->  repo type-based), per output-type block
 (s,e) from `tb.cond_y_x.iterate_cond()`:
@@ -17,10 +18,6 @@ Structural map (paper single-letter  ->  repo type-based), per output-type block
 Rate convention: R is the TOTAL rate (M = e^R competitors), w0 = e^{-R} = 1/M,
 matching `rcu_plus_from_F_curve(w_max=1/M)` and `plot_lp_vs_memoryless_channel`.
 """
-
-import os
-import sys
-
 
 import numpy as np
 import cvxpy as cp

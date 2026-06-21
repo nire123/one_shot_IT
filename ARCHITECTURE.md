@@ -247,6 +247,7 @@ No closed-form oracle exists in general, so every bound is cross-checked
 - **Channel.** The achievability prior gain over optimised memoryless is a
   **low-rate + large-`n` corner** effect (constant-composition): small at `n=6`,
   large (tens of %) by `n=20` at low rate.
-- **JSCC.** For an i.i.d. source + memoryless channel the gain is **negligible**
-  at small `n` — the optimal ensemble is essentially memoryless. See
-  `examples/ex5_jscc_gain.py`.
+- **JSCC.** For an i.i.d. source + memoryless channel the non-product prior gain is
+  **negligible** — the optimal ensemble is essentially memoryless; the JSCC result
+  instead shows error-vs-`n` (converse / achievable / Monte-Carlo / uncoded) for a
+  reliable `H<C` pair. See `examples/gen_jscc.py`.
