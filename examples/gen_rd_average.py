@@ -7,6 +7,8 @@ BMS(p=0.25) + Hamming.
       marginal-memoryless (achievable / converse)            -- the centerpiece
   G3  exact random-coding distortion vs the exponential surrogate
   G4  distortion spectrum: achievability- vs converse-optimal prior
+  G5  optimal achievable prior vs its i.i.d. product (marginalization cost)
+  rate_vs_n  fix distortion D; achievable rate vs blocklength (opt-in, scales to n~80)
 
 The achievability-optimal reproduction prior is the Phi-view simplex march
 (exact kernel  Phi(tau)=(1-tau)^M, M=e^{nR}; D = c^T Phi(A Q)).  G1 stays at
@@ -190,6 +192,56 @@ def g5_full_vs_product(n):
     return save(fig, f"{PREFIX}_g5_full_vs_product_n{n}.png")
 
 
+def _hb(p):
+    p = np.clip(p, 1e-12, 1 - 1e-12)
+    return -p * np.log2(p) - (1 - p) * np.log2(1 - p)
+
+
+def _min_rate_for_distortion(dist_of_Rb, D, R_hi=1.0, iters=20):
+    """Smallest rate (bits/sym) with distortion <= D (distortion decreasing in R)."""
+    lo, hi = 0.0, R_hi
+    for _ in range(iters):
+        mid = 0.5 * (lo + hi)
+        lo, hi = (lo, mid) if dist_of_Rb(mid) <= D else (mid, hi)
+    return hi
+
+
+def rate_vs_n(D_target=0.1, n_list=(4, 6, 8, 12, 16, 24, 32, 48, 64, 80)):
+    """Fix the average distortion D; plot the achievable rate vs blocklength
+    converging (from above) to the rate-distortion function R(D). The achievable
+    point uses the Phi-view march (pure NumPy, no cvxpy) inverted by bisection on
+    the rate, so it scales to large n.
+
+    (No converse curve here: for RD the lossy meta-converse rate is a separate
+    construction -- the type-based optimize_prior returns the single-threshold
+    *prior's distortion*, an achievability-side quantity, not a rate converse.)"""
+    import time
+    RD = max(0.0, _hb(P) - _hb(D_target))            # R(D)=H(p)-H(D) for D<=p
+    R_ach = []
+    for n in n_list:
+        t = time.time()
+        prog = ps.build_program("rd", P_X=P_X1, d=D_SINGLE, n=n, kernel="exact")
+        warm = {"Q": None}
+
+        def dist_ach(Rb):
+            res = ps.optimize(prog, float(np.exp(n * Rb * LN2)), method="pgd",
+                              max_iter=2500, tol=1e-7, warm_start=warm["Q"])
+            warm["Q"] = res["Q"]
+            return res["J"] / n
+
+        R_ach.append(_min_rate_for_distortion(dist_ach, D_target))
+        print(f"  n={n}: R_ach={R_ach[-1]:.4f}  (R(D)={RD:.4f}, {time.time()-t:.1f}s)",
+              flush=True)
+
+    fig, ax = plt.subplots(figsize=(7.6, 4.8))
+    ax.axhline(RD, color="k", ls=":", lw=1.3, label=f"$R(D)={RD:.3f}$ (rate-distortion fn)")
+    ax.plot(n_list, R_ach, "s-", color="C1", label=r"achievable ($\Phi$-march, exact kernel)")
+    ax.set_xlabel("blocklength $n$"); ax.set_ylabel("rate $R$ (bits/sym)")
+    ax.set_title(f"{TITLE}: rate vs blocklength at fixed distortion $D={D_target}$")
+    ax.legend(fontsize=9); ax.grid(True, which="both", alpha=0.3)
+    return save(fig, f"{PREFIX}_rate_vs_n.png")
+
+
 def main():
     print("[g1]"); g1_mc_spread(8)
     for n in (8, 20):
@@ -197,6 +249,8 @@ def main():
         print(f"[g3 n={n}]"); g3_bounds_vs_exact(n)
         print(f"[g4 n={n}]"); g4_fcurve_compare(n)
         print(f"[g5 n={n}]"); g5_full_vs_product(n)
+    # rate_vs_n(D_target=0.1) is opt-in (slow: the march bisection reaches n~80
+    # but a large-n point can take minutes). Run it explicitly to regenerate.
 
 
 if __name__ == "__main__":

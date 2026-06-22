@@ -45,6 +45,20 @@ def test_channel_qp_le_best_memoryless(Rbits):
     assert qp <= best_ml + 1e-6, f"QP {qp} > best memoryless {best_ml}"
 
 
+def test_channel_achievable_rate_at_eps_single_convex():
+    """The single convex program for the RCU+ achievable rate at fixed eps must
+    match a bisection that solves the RCU+ QP per step (feasible regime)."""
+    n, eps, ln2 = 12, 1e-2, np.log(2.0)
+    aqp = AchievabilityQP(Zc, n)
+    r_cx = aqp.achievable_rate_at_eps(eps) / ln2                  # bits/sym
+    lo, hi = 0.0, 1.2
+    for _ in range(26):                                          # bisection reference
+        mid = 0.5 * (lo + hi)
+        pe = aqp.solve_rcu_plus(n * mid * ln2)["P_e_exact"]
+        lo, hi = (mid, hi) if pe <= eps else (lo, mid)
+    assert abs(r_cx - lo) <= 1e-3, f"convex {r_cx} vs bisection {lo}"
+
+
 def test_channel_bracket_contains_exact():
     n = 6
     W = Zc

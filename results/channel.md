@@ -83,12 +83,19 @@ is already nearly i.i.d., so the non-product structure is worth only a few perce
 ![rate vs n](../examples/figures/channel_rate_vs_n.png)
 
 The complementary view to G1–G5: **fix the error probability `ε=10⁻³` and plot the
-rate vs blocklength.** The **converse** (max rate at which the meta-converse floor
-is `≤ε`) and the **achievable** (max rate at which the Φ-march bound is `≤ε`)
-bracket the true `ε`-capacity and both rise toward capacity `C=0.763`. The
-**converse point is a single LP** — `TypeBasedChannel.converse_rate_at_eps(ε)`
-inverts the meta-converse directly for `w=e^{-R}` (`min w` s.t. success `≥ 1-ε`),
-no rate sweep — exact and ~20× faster than bisecting. The achievable point is a
-bisection on the warm-started march (the bound is monotone in `R`). At these small
-`n` the achievable is conservative — at `ε=10⁻³` you can barely add a second
-codeword until `n≈12` — which is the genuine finite-blocklength regime.
+rate vs blocklength.** The **converse** and **achievable** rates bracket the true
+`ε`-capacity and both rise toward capacity `C=0.763`. Crucially **each point is a
+single solve, not a rate sweep**:
+- converse — one **LP** (`TypeBasedChannel.converse_rate_at_eps(ε)`): `min w` s.t.
+  success `≥ 1−ε`, the ramp being PWL in `(σ,w)`;
+- achievable — one **convex program** (`AchievabilityQP.achievable_rate_at_eps(ε)`):
+  the RCU⁺ potential `σ−σ²/(2w)` is quad-over-linear in `w`, hence jointly concave,
+  so `min w` s.t. success `≥ 1−ε` is convex (QP/SOCP).
+
+Both are ~20× faster than rate-bisection and verified to match it. **How large can
+`n` go?** Capped here at `n=30`: the single-solve removes the bisection factor but
+not cvxpy's *compilation* ceiling — beyond `n≈30–40` the build explodes (tens of
+thousands of constraints) and CLARABEL becomes unreliable. Vectorising the cvxpy
+build is the route further; the pure-NumPy march scales past it (see the RD figure,
+`n=80`). At small `n` the achievable is conservative (at `ε=10⁻³` you can barely add
+a second codeword until `n≈12`) — the genuine finite-blocklength regime.

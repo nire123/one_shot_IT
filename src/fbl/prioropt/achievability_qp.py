@@ -105,6 +105,47 @@ class AchievabilityQP:
             "status": prob.status,
         }
 
+    # -------------------------------------------------- rate at fixed error ---
+    def achievable_rate_at_eps(self, eps):
+        r"""
+        Largest rate with RCU+ achievable error <= eps, as a SINGLE convex program
+        (no rate bisection).
+
+        Inverting the achievability program: the RCU+ success at threshold
+        ``w = e^{-R}`` is ``S(w) = max_{Q} sum_j c_j (a_j - a_j^2/(2w))`` over the
+        clamped knots ``a_j <= min(cumulative, w)``.  The only ``w``-dependence is
+        the quadratic-over-linear term ``a_j^2/w`` (jointly convex), so ``S`` is
+        jointly concave in ``(Q, a, w)`` and the inversion is one convex program::
+
+            min_{w,Q,a} w   s.t.   sum_j c_j (a_j - a_j^2/(2w)) >= 1 - eps,
+                                   a_j <= a_{j-1} + mass_j,  a_j <= w,
+                                   sum_x Q_x = 1,  Q,a,w >= 0.
+
+        Returns the **per-symbol** rate in nats, ``R = -log(w*) / n`` (same
+        convention as ``TypeBasedChannel.converse_rate_at_eps``: ``w = e^{-R} = 1/M``).
+        """
+        Q = cp.Variable(self.tb.num_q, nonneg=True)
+        w = cp.Variable(nonneg=True)
+        cons = [cp.sum(Q) == 1.0]
+        S = []
+        for (nu, ridx, ratio) in self._blocks():
+            nb = len(nu)
+            mass = cp.multiply(Q[ridx], ratio)
+            a = cp.Variable(nb, nonneg=True)
+            cons.append(a[0] <= mass[0])
+            for j in range(1, nb):
+                cons.append(a[j] <= a[j - 1] + mass[j])
+            cons.append(a <= w)
+            nu_ext = np.concatenate([nu, [0.0]])
+            for j in range(nb):
+                coef = float(nu_ext[j] - nu_ext[j + 1])
+                if coef > 0.0:
+                    S.append(coef * (a[j] - 0.5 * cp.quad_over_lin(a[j], w)))
+        cons.append(cp.sum(S) >= 1.0 - eps)
+        prob = cp.Problem(cp.Minimize(w), cons)
+        prob.solve(solver=cp.CLARABEL)
+        return -np.log(float(w.value)) / self.n
+
     # ------------------------------------------------------------------ LP ---
     def solve_bracketing_lp(self, R, kernel="exact", K=64, side="both"):
         """

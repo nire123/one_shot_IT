@@ -56,3 +56,20 @@ The optimal achievable reproduction prior vs its i.i.d. product version, scored 
 the exact best-of-`M` distortion. The two bounds nearly coincide; the
 marginalization cost is **≈6.5 %** (largest at high rate) — modestly larger than
 channel, but the optimum is still essentially i.i.d.
+
+## Rate vs blocklength at fixed distortion
+
+![rate vs n](../examples/figures/rd_avg_rate_vs_n.png)
+
+The complementary view: **fix the average distortion `D=0.1` and plot the
+achievable rate vs blocklength**, converging from above to the rate-distortion
+function `R(D)=H(p)−H(D)=0.342` bits/sym. Each point inverts the bound by bisection
+on the rate using the **Φ-view march** — which is *pure NumPy* (no cvxpy), so it
+**scales to large `n`: this curve reaches `n=80`** (where the channel single-cvxpy
+inversion stalls near `n≈30–40`). The march per-point does get slow at large `n`
+(the gradient is a Python loop over type-blocks), so this figure is opt-in
+(`gen_rd_average.rate_vs_n`), not part of the default suite.
+
+> No converse curve here: for RD the lossy meta-converse *rate* is a separate
+> construction; the type-based `optimize_prior` returns the single-threshold
+> *prior's distortion* (an achievability-side quantity), not a rate converse.

@@ -190,9 +190,10 @@ at low rate, $\to 0$ at high rate. The optimum is nearly i.i.d.}
 \begin{figure}[H]\centering
 \includegraphics[width=0.66\textwidth]{channel_rate_vs_n.png}
 \caption{The complementary view: fix $P_e=\epsilon=10^{-3}$ and plot rate vs.\
-blocklength. Converse (max rate with floor $\le\epsilon$) and achievable
-($\Phi$-march bound $\le\epsilon$) bracket the $\epsilon$-capacity and rise toward
-$C$. Each point is a bisection on $R$ (the bound is monotone in rate).}
+blocklength. Both points are a \emph{single solve}: the converse is one LP and the
+achievable RCU$^+$ is one convex program (the threshold $w=e^{-R}$ enters as
+quad-over-linear). They bracket the $\epsilon$-capacity and rise toward $C$; capped
+at $n=30$ by cvxpy's compilation ceiling.}
 \end{figure}
 
 \subsection{Rate--distortion, average --- BMS$(0.25)$ + Hamming}
@@ -223,6 +224,13 @@ The gain over the best memoryless prior is $\approx5.4\%$ ($n=8$) / $5.9\%$
 \begin{subfigure}{0.49\textwidth}\includegraphics[width=\linewidth]{rd_avg_g5_full_vs_product_n20.png}\caption{$n=20$}\end{subfigure}
 \caption{G5 --- optimal achievable prior vs.\ its i.i.d.\ product: the
 marginalization cost is $\approx6.5\%$; the optimum is still essentially i.i.d.}
+\end{figure}
+\begin{figure}[H]\centering
+\includegraphics[width=0.66\textwidth]{rd_avg_rate_vs_n.png}
+\caption{Rate vs.\ blocklength at fixed distortion $D=0.1$: the achievable rate
+converges from above to the rate-distortion function $R(D)=H(p)-H(D)=0.342$.
+The inversion uses the pure-NumPy march (bisection on the rate), which scales to
+$n=80$ -- past the channel's single-cvxpy ceiling.}
 \end{figure}
 
 \subsection{Rate--distortion, excess --- BMS$(0.25)$, $T=1$, $n=6$}

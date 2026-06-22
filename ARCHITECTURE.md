@@ -203,6 +203,15 @@ remain as exact validation anchors (and supply the `_blocks` staircase the march
 reads). First-order convergence is fast to engineering accuracy; an active-set
 finish (future work) would reach machine precision on the flat clamp region.
 
+### 2.2 Inverting the bound (rate at fixed error)
+
+Fixing the error `ε` and solving for the rate (`R`-vs-`n`) is a *single* program
+because both bounds are monotone in `R` and the threshold `w=e^{-R}` enters benignly:
+the converse is one LP (`TypeBasedChannel.converse_rate_at_eps`, the ramp is
+PWL in `(σ,w)`), and the RCU⁺ achievable is one convex program
+(`AchievabilityQP.achievable_rate_at_eps`, the `w`-term is quadratic-over-linear →
+jointly concave). Both are ~20× faster than rate-bisection. See `THEORY.md` §4.1.
+
 ## 3. Conventions (read before comparing curves)
 
 - **Rate / `M`.** Channel has a free rate knob `M = e^{nR}` (per-symbol

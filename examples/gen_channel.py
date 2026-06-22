@@ -25,6 +25,7 @@ from fbl.channel_achievable_utils import z_channel, kronecker_power
 from fbl.F_curve import (integrate_curve_channel_coding_exact,
                          integrate_curve_channel_coding_union_bound)
 from fbl.type_based_utils import marginal_input
+from fbl.prioropt import AchievabilityQP
 from fbl.prioropt import phi_simplex as ps
 from fbl.prioropt import phi_view as pv
 
@@ -228,32 +229,30 @@ def _rate_at_eps(err_of_Rb, eps, R_hi, iters=16):
     return lo
 
 
-def rate_vs_n(eps=1e-3, n_list=(4, 6, 8, 10, 12, 14, 16, 18, 20, 22)):
-    """Fix the error probability eps; plot achievable (Phi-march) and converse
-    (meta-converse LP) rate vs blocklength, converging toward capacity."""
+def rate_vs_n(eps=1e-3, n_list=(4, 6, 8, 10, 14, 18, 22, 26, 30)):
+    """Fix the error probability eps; plot achievable (RCU+) and converse
+    (meta-converse) rate vs blocklength. BOTH points are a single solve per n --
+    the converse is one LP, the achievable is one convex program (no rate
+    bisection). Range capped at n=30: beyond that the cvxpy *build* explodes
+    (tens of thousands of constraints) and CLARABEL becomes unreliable -- the
+    single-solve removes the bisection factor but not cvxpy's compilation ceiling
+    (vectorising that build is the route to larger n; the NumPy march scales
+    further, as the RD figure shows)."""
     C = _capacity_bits()
-    R_hi = C + 0.35
     R_ach, R_conv = [], []
+    import time
     for n in n_list:
-        prog = ps.build_program("channel", W=W, n=n, kernel="exact")
-        warm = {"Q": None}
-
-        def err_ach(Rb):
-            res = ps.optimize(prog, float(np.exp(n * Rb * LN2)), method="pgd",
-                              max_iter=2500, tol=1e-7, warm_start=warm["Q"])
-            warm["Q"] = res["Q"]
-            return 1.0 - res["J"]
-
-        tbc = TypeBasedChannel(W, n)
-        R_ach.append(_rate_at_eps(err_ach, eps, R_hi))
-        R_conv.append(tbc.converse_rate_at_eps(eps) / LN2)   # single LP, exact
-        print(f"  n={n}: R_ach={R_ach[-1]:.4f}  R_conv={R_conv[-1]:.4f}  (C={C:.4f})",
-              flush=True)
+        t = time.time()
+        aqp = AchievabilityQP(W, n)
+        R_ach.append(max(0.0, aqp.achievable_rate_at_eps(eps) / LN2))      # 1 convex prog
+        R_conv.append(TypeBasedChannel(W, n).converse_rate_at_eps(eps) / LN2)  # 1 LP
+        print(f"  n={n}: R_ach={R_ach[-1]:.4f}  R_conv={R_conv[-1]:.4f}  "
+              f"(C={C:.4f}, {time.time()-t:.1f}s)", flush=True)
 
     fig, ax = plt.subplots(figsize=(7.6, 4.8))
     ax.axhline(C, color="k", ls=":", lw=1.3, label=f"capacity $C={C:.3f}$")
-    ax.plot(n_list, R_conv, "^-", color="C0", label=r"converse (max rate at $P_e=\epsilon$)")
-    ax.plot(n_list, R_ach, "s-", color="C1", label=r"achievable ($\Phi$-march at $P_e=\epsilon$)")
+    ax.plot(n_list, R_conv, "^-", color="C0", label=r"converse (single LP)")
+    ax.plot(n_list, R_ach, "s-", color="C1", label=r"achievable RCU$^+$ (single convex program)")
     ax.set_xlabel("blocklength $n$"); ax.set_ylabel("rate $R$ (bits/use)")
     ax.set_title(f"{TITLE}: rate vs blocklength at fixed $P_e=\\epsilon={eps:g}$")
     ax.legend(fontsize=9); ax.grid(True, alpha=0.3)

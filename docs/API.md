@@ -44,9 +44,15 @@ implied by the lifted operands); `TypeBasedChannel(W, n)`, `TypeBasedRD(P_X, d, 
 | `validate(prior, M, ...)` | ✓ | — | dict incl. `within_ci` (theory ↔ MC) |
 | `check_kkt(M, prior, s)` | ✓ | (channel/RD: —) | KKT optimality flags `cond1/cond2` |
 | `get_one_shot_object()` | — | ✓ | the lifted `OneShot*` for cross-checking |
+| `converse_rate_at_eps(eps)` | — | ✓ (channel) | per-symbol nats: largest rate with converse error `≤ eps`, as a **single LP** |
 
 > ⚠️ **Return ordering.** `optimize_prior` returns `(prior, metric)`. The JSCC
 > analogue `compute_converse` returns `(error_lb, Q)` — the opposite order.
+
+`TypeBasedChannel.converse_rate_at_eps(eps)` **inverts** the converse: instead of
+fixing `M` and reading the error, it fixes the error and returns the rate, in one
+LP (`min w` s.t. success `≥ 1−eps`; `R = −log(w*)/n`). The achievable companion is
+`AchievabilityQP.achievable_rate_at_eps` (§2.2).
 
 ### 1.2 `OneShotJSCC(P_V, W)` and `TypeBasedJSCC(P_V, W, n)`
 
@@ -105,6 +111,10 @@ converse prior is the meta-converse LP on the engines (`optimize_prior` /
 
 **`AchievabilityQP(W_single, n)`** — channel.
 - `solve_rcu_plus(R)` → `dict(Q_opt, P_e_exact, Gamma, status)` (exact RCU⁺ QP).
+- `achievable_rate_at_eps(eps)` → per-symbol nats: largest rate with RCU⁺ error
+  `≤ eps`, as a **single convex program** (`min w` s.t. success `≥ 1−eps`; the
+  `w`-dependence is quad-over-linear, so it's jointly convex). The achievable
+  companion to `converse_rate_at_eps`; both invert the bound for the `R`-vs-`n` view.
 - `solve_bracketing_lp(R, kernel, K, side)` → bracket dict. `_blocks()` → staircase.
 
 **`AchievabilityLP_RD(P_X_single, d_single, n)`** — rate-distortion.

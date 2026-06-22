@@ -150,6 +150,37 @@ bracketing-LP solvers remain as exact validation anchors, and an active-set fini
 (future work) would close the last gap. (The earlier channel-only `DirectPriorOpt`
 prototype has been removed in favour of this general implementation.)
 
+### 4.1 Inverting the bound: rate at a fixed error
+
+The figures above fix the rate and read off the error. The complementary question —
+**fix the error `ε`, find the best rate `R`** (the canonical finite-blocklength
+plot, `R` vs `n`) — inverts the bound. Both bounds are **monotone in the rate**, so
+the inverse is well-defined; and for the natural kernels it is a *single* program,
+not a rate sweep, by making the threshold `w = e^{-R}` a decision variable.
+
+**Converse — one LP.** The single-threshold potential `Φ_w(σ)=min(σ,w)` is jointly
+concave (piecewise-linear) in `(σ,w)`. Parametrising by the *un-normalised*
+reverse-channel mass `V` (`= R·w`) cancels the `1/w` in the cap, so
+
+$$\min_{w,Q,V} w \quad\text{s.t.}\quad \textstyle\sum_r V_r\alpha_r \ge 1-\varepsilon,\;\;
+V_r\le Q_{T_X(r)}\rho_r,\;\; \textstyle\sum_{r\in y}V_r\le w,\;\; \textstyle\sum_x Q_x=1$$
+
+is **one LP**, and `R_conv(ε) = −log(w*)/n` (`TypeBasedChannel.converse_rate_at_eps`).
+
+**Achievable (RCU⁺) — one convex program.** Writing the RCU⁺ potential with the
+threshold explicit, `Φ(σ,w) = σ − σ²/(2w)` (clamped at `w/2`). The only
+`w`-dependence is the **quadratic-over-linear** `σ²/w`, which is jointly *convex*,
+so `Φ` is jointly *concave* in `(σ,w)` and `J(Q,w)=cᵀΦ(A·Q;w)` is jointly concave.
+Hence `min w s.t. J(Q,w) ≥ 1−ε` is a **single convex program** (QP/SOCP), with
+`R_ach(ε) = −log(w*)/n` (`AchievabilityQP.achievable_rate_at_eps`). Both inversions
+were checked against rate-bisection (agree to ~1e-6) and are ~20× faster.
+
+**Other kernels.** For the exact-RC and rate-distortion potentials the codebook
+size enters as `M = 1/w` in an *exponent* (`(1−σ)^{1/w}`), which is not jointly
+concave in `(σ,w)`; there the inversion stays a **bisection on `w`** with one convex
+march per step (still cheap, warm-started). The RCU⁺ ramp is special because its
+`w`-dependence is quadratic-over-linear.
+
 ---
 
 ## 5. The three settings, specialised
