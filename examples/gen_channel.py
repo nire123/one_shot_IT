@@ -229,33 +229,38 @@ def _rate_at_eps(err_of_Rb, eps, R_hi, iters=16):
     return lo
 
 
-def rate_vs_n(eps=1e-3, n_list=(4, 6, 8, 10, 14, 18, 22, 26, 30)):
-    """Fix the error probability eps; plot achievable (RCU+) and converse
-    (meta-converse) rate vs blocklength. BOTH points are a single solve per n --
-    the converse is one LP, the achievable is one convex program (no rate
-    bisection). Range capped at n=30: beyond that the cvxpy *build* explodes
-    (tens of thousands of constraints) and CLARABEL becomes unreliable -- the
-    single-solve removes the bisection factor but not cvxpy's compilation ceiling
-    (vectorising that build is the route to larger n; the NumPy march scales
-    further, as the RD figure shows)."""
-    C = _capacity_bits()
-    R_ach, R_conv = [], []
+def rate_vs_n(eps_list=(1e-2, 1e-3), n_list=(4, 6, 8, 12, 16, 20, 24, 28)):
+    """Fix the error probability; plot achievable (RCU+) and converse
+    (meta-converse) rate vs blocklength, for one or more eps. BOTH points are a
+    single solve per (n, eps) -- the converse is one LP, the achievable is one
+    convex program (no rate bisection). Range capped near n=30: beyond that the
+    cvxpy *build* explodes and CLARABEL becomes unreliable -- the single-solve
+    removes the bisection factor but not cvxpy's compilation ceiling (the NumPy
+    march scales further, as the RD figure shows). Looser eps -> the achievable
+    and converse curves are closer."""
     import time
-    for n in n_list:
-        t = time.time()
-        aqp = AchievabilityQP(W, n)
-        R_ach.append(max(0.0, aqp.achievable_rate_at_eps(eps) / LN2))      # 1 convex prog
-        R_conv.append(TypeBasedChannel(W, n).converse_rate_at_eps(eps) / LN2)  # 1 LP
-        print(f"  n={n}: R_ach={R_ach[-1]:.4f}  R_conv={R_conv[-1]:.4f}  "
-              f"(C={C:.4f}, {time.time()-t:.1f}s)", flush=True)
+    C = _capacity_bits()
+    colors = {0: "C0", 1: "C2", 2: "C3"}
 
-    fig, ax = plt.subplots(figsize=(7.6, 4.8))
+    fig, ax = plt.subplots(figsize=(7.8, 5.0))
     ax.axhline(C, color="k", ls=":", lw=1.3, label=f"capacity $C={C:.3f}$")
-    ax.plot(n_list, R_conv, "^-", color="C0", label=r"converse (single LP)")
-    ax.plot(n_list, R_ach, "s-", color="C1", label=r"achievable RCU$^+$ (single convex program)")
+    for i, eps in enumerate(eps_list):
+        R_ach, R_conv = [], []
+        for n in n_list:
+            t = time.time()
+            R_ach.append(max(0.0, AchievabilityQP(W, n).achievable_rate_at_eps(eps) / LN2))
+            R_conv.append(TypeBasedChannel(W, n).converse_rate_at_eps(eps) / LN2)
+            print(f"  eps={eps:g} n={n}: R_ach={R_ach[-1]:.4f} R_conv={R_conv[-1]:.4f} "
+                  f"({time.time()-t:.1f}s)", flush=True)
+        col = colors[i]
+        ax.plot(n_list, R_conv, "^-", color=col, label=fr"converse, $\epsilon={eps:g}$")
+        ax.plot(n_list, R_ach, "s--", color=col,
+                label=fr"achievable RCU$^+$, $\epsilon={eps:g}$")
+
     ax.set_xlabel("blocklength $n$"); ax.set_ylabel("rate $R$ (bits/use)")
-    ax.set_title(f"{TITLE}: rate vs blocklength at fixed $P_e=\\epsilon={eps:g}$")
-    ax.legend(fontsize=9); ax.grid(True, alpha=0.3)
+    ax.set_title(f"{TITLE}: rate vs blocklength at fixed $P_e$ "
+                 f"(single LP / convex program per point)")
+    ax.legend(fontsize=8.5, ncol=2); ax.grid(True, alpha=0.3)
     return save(fig, f"{PREFIX}_rate_vs_n.png")
 
 

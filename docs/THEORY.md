@@ -181,6 +181,16 @@ concave in `(σ,w)`; there the inversion stays a **bisection on `w`** with one c
 march per step (still cheap, warm-started). The RCU⁺ ramp is special because its
 `w`-dependence is quadratic-over-linear.
 
+**The converse for average distortion.** Inverting the achievable RD bound (above)
+gives the achievable rate at fixed `D`. Its matching **converse is the
+rate-distortion function `R(D)` itself**: any code with `E[d]≤D` needs rate `≥ R(D)`
+at *every* blocklength, so `R(D)` is a valid lower bound the achievable converges
+down to — but flat, with no first-order `n`-dependent term (the dispersion
+`√(V/n)·Q⁻¹(ε)` exists only for the excess-distortion *probability*, not average
+`D`). Note this is **not** what `optimize_prior` returns for RD: that is the
+single-threshold prior's *distortion* (an achievability-side quantity that decreases
+with `n`), not a rate converse.
+
 ---
 
 ## 5. The three settings, specialised

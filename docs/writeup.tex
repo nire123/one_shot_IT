@@ -189,11 +189,13 @@ at low rate, $\to 0$ at high rate. The optimum is nearly i.i.d.}
 \end{figure}
 \begin{figure}[H]\centering
 \includegraphics[width=0.66\textwidth]{channel_rate_vs_n.png}
-\caption{The complementary view: fix $P_e=\epsilon=10^{-3}$ and plot rate vs.\
-blocklength. Both points are a \emph{single solve}: the converse is one LP and the
-achievable RCU$^+$ is one convex program (the threshold $w=e^{-R}$ enters as
-quad-over-linear). They bracket the $\epsilon$-capacity and rise toward $C$; capped
-at $n=30$ by cvxpy's compilation ceiling.}
+\caption{The complementary view: fix $P_e$ and plot rate vs.\ blocklength, for two
+targets $\epsilon=10^{-2},10^{-3}$ (same colour $=$ same $\epsilon$; solid $=$
+converse, dashed $=$ achievable). Both points are a \emph{single solve}: the
+converse is one LP and the achievable RCU$^+$ is one convex program (the threshold
+$w=e^{-R}$ enters as quad-over-linear). They bracket the $\epsilon$-capacity and
+rise toward $C$; the looser $\epsilon=10^{-2}$ pair is higher and tighter. Capped at
+$n=28$ by cvxpy's compilation ceiling.}
 \end{figure}
 
 \subsection{Rate--distortion, average --- BMS$(0.25)$ + Hamming}
@@ -228,9 +230,11 @@ marginalization cost is $\approx6.5\%$; the optimum is still essentially i.i.d.}
 \begin{figure}[H]\centering
 \includegraphics[width=0.66\textwidth]{rd_avg_rate_vs_n.png}
 \caption{Rate vs.\ blocklength at fixed distortion $D=0.1$: the achievable rate
-converges from above to the rate-distortion function $R(D)=H(p)-H(D)=0.342$.
-The inversion uses the pure-NumPy march (bisection on the rate), which scales to
-$n=80$ -- past the channel's single-cvxpy ceiling.}
+converges from above to the \emph{converse}, which for average distortion is the
+rate-distortion function $R(D)=H(p)-H(D)=0.342$ (a valid lower bound at every $n$;
+its dispersion term vanishes for average $D$). The inversion uses the pure-NumPy
+march (bisection on the rate), which scales to $n=80$ -- past the channel's
+single-cvxpy ceiling.}
 \end{figure}
 
 \subsection{Rate--distortion, excess --- BMS$(0.25)$, $T=1$, $n=6$}

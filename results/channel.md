@@ -82,10 +82,15 @@ is already nearly i.i.d., so the non-product structure is worth only a few perce
 
 ![rate vs n](../examples/figures/channel_rate_vs_n.png)
 
-The complementary view to G1–G5: **fix the error probability `ε=10⁻³` and plot the
-rate vs blocklength.** The **converse** and **achievable** rates bracket the true
-`ε`-capacity and both rise toward capacity `C=0.763`. Crucially **each point is a
-single solve, not a rate sweep**:
+The complementary view to G1–G5: **fix the error probability and plot the rate vs
+blocklength**, here for **two targets `ε=10⁻²` and `ε=10⁻³`** (same color = same
+`ε`; `▲` solid = converse, `■` dashed = achievable). The **converse** and
+**achievable** rates bracket the true `ε`-capacity and both rise toward capacity
+`C=0.763`; the looser `ε=10⁻²` pair sits higher and **noticeably tighter** — at
+`n=28` the gap is ≈0.10 bits (`0.477` vs `0.574`) against ≈0.13 for `ε=10⁻³`
+(`0.355` vs `0.486`) — you can afford more codewords at the same `n` when more error
+is tolerated, and the achievable also lifts off `R=0` sooner (`n≈8` vs `n≈16`).
+Crucially **each point is a single solve, not a rate sweep**:
 - converse — one **LP** (`TypeBasedChannel.converse_rate_at_eps(ε)`): `min w` s.t.
   success `≥ 1−ε`, the ramp being PWL in `(σ,w)`;
 - achievable — one **convex program** (`AchievabilityQP.achievable_rate_at_eps(ε)`):
@@ -93,9 +98,9 @@ single solve, not a rate sweep**:
   so `min w` s.t. success `≥ 1−ε` is convex (QP/SOCP).
 
 Both are ~20× faster than rate-bisection and verified to match it. **How large can
-`n` go?** Capped here at `n=30`: the single-solve removes the bisection factor but
+`n` go?** Capped here at `n=28`: the single-solve removes the bisection factor but
 not cvxpy's *compilation* ceiling — beyond `n≈30–40` the build explodes (tens of
 thousands of constraints) and CLARABEL becomes unreliable. Vectorising the cvxpy
 build is the route further; the pure-NumPy march scales past it (see the RD figure,
-`n=80`). At small `n` the achievable is conservative (at `ε=10⁻³` you can barely add
-a second codeword until `n≈12`) — the genuine finite-blocklength regime.
+`n=80`). At small `n` the achievable is conservative — the genuine
+finite-blocklength regime.

@@ -212,9 +212,11 @@ def rate_vs_n(D_target=0.1, n_list=(4, 6, 8, 12, 16, 24, 32, 48, 64, 80)):
     point uses the Phi-view march (pure NumPy, no cvxpy) inverted by bisection on
     the rate, so it scales to large n.
 
-    (No converse curve here: for RD the lossy meta-converse rate is a separate
-    construction -- the type-based optimize_prior returns the single-threshold
-    *prior's distortion*, an achievability-side quantity, not a rate converse.)"""
+    The CONVERSE here is R(D) itself: for *average* distortion the rate-distortion
+    function is a valid converse at every blocklength (any code with E[d]<=D needs
+    rate >= R(D)), so it is the flat lower line the achievable converges down to.
+    Unlike channel coding it has no first-order n-dependent term -- that dispersion
+    appears only for the excess-distortion *probability*, not for average D."""
     import time
     RD = max(0.0, _hb(P) - _hb(D_target))            # R(D)=H(p)-H(D) for D<=p
     R_ach = []
@@ -234,7 +236,8 @@ def rate_vs_n(D_target=0.1, n_list=(4, 6, 8, 12, 16, 24, 32, 48, 64, 80)):
               flush=True)
 
     fig, ax = plt.subplots(figsize=(7.6, 4.8))
-    ax.axhline(RD, color="k", ls=":", lw=1.3, label=f"$R(D)={RD:.3f}$ (rate-distortion fn)")
+    ax.axhline(RD, color="C0", ls="--", lw=1.4,
+               label=f"converse $=R(D)={RD:.3f}$ (rate-distortion fn)")
     ax.plot(n_list, R_ach, "s-", color="C1", label=r"achievable ($\Phi$-march, exact kernel)")
     ax.set_xlabel("blocklength $n$"); ax.set_ylabel("rate $R$ (bits/sym)")
     ax.set_title(f"{TITLE}: rate vs blocklength at fixed distortion $D={D_target}$")

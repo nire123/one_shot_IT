@@ -62,14 +62,19 @@ channel, but the optimum is still essentially i.i.d.
 ![rate vs n](../examples/figures/rd_avg_rate_vs_n.png)
 
 The complementary view: **fix the average distortion `D=0.1` and plot the
-achievable rate vs blocklength**, converging from above to the rate-distortion
-function `R(D)=H(p)−H(D)=0.342` bits/sym. Each point inverts the bound by bisection
-on the rate using the **Φ-view march** — which is *pure NumPy* (no cvxpy), so it
-**scales to large `n`: this curve reaches `n=80`** (where the channel single-cvxpy
-inversion stalls near `n≈30–40`). The march per-point does get slow at large `n`
-(the gradient is a Python loop over type-blocks), so this figure is opt-in
-(`gen_rd_average.rate_vs_n`), not part of the default suite.
+achievable rate vs blocklength**, converging from above to the **converse**, which
+for average distortion *is* the rate-distortion function `R(D)=H(p)−H(D)=0.342`
+bits/sym. Each achievable point inverts the bound by bisection on the rate using the
+**Φ-view march** — which is *pure NumPy* (no cvxpy), so it **scales to large `n`:
+this curve reaches `n=80`** (where the channel single-cvxpy inversion stalls near
+`n≈30–40`). The march per-point does get slow at large `n` (the gradient is a Python
+loop over type-blocks), so this figure is opt-in (`gen_rd_average.rate_vs_n`), not
+part of the default suite.
 
-> No converse curve here: for RD the lossy meta-converse *rate* is a separate
-> construction; the type-based `optimize_prior` returns the single-threshold
-> *prior's distortion* (an achievability-side quantity), not a rate converse.
+> **Why `R(D)` is the converse.** For *average* distortion, any code with `E[d]≤D`
+> needs rate `≥ R(D)` at **every** blocklength, so `R(D)` is a valid converse lower
+> bound the achievable converges down to — the flat lower line in the figure. Unlike
+> channel coding it has no first-order `n`-dependent term: that dispersion
+> (`√(V/n)·Q⁻¹(ε)`) appears only for the excess-distortion *probability*, not for
+> average `D`. (The type-based `optimize_prior` is *not* a rate converse — it returns
+> the single-threshold prior's distortion, which in fact *decreases* with `n`.)
